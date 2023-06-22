@@ -8,9 +8,9 @@
     An application for visualising and aligning contours in kV projections. 
     <br />
     <br />
-    <a href="https://github.sydney.edu.au/Image-X/contour-alignment-tool/issues">Report Bug</a>
+    <a href="https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/issues">Report Bug</a>
     ·
-    <a href="https://github.sydney.edu.au/Image-X/contour-alignment-tool/issues">Request Feature</a>
+    <a href="https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/issues">Request Feature</a>
   </p>
 </div>
 
@@ -48,7 +48,7 @@
 ## About
 The Contour Alignment Tool is an application designed for aligning 3D contour structures with 2D kilovoltage projections. Users can load projections along with the associated CT, structure set, and plan files. The tool generates 2D contours from the selected 3D structure and allows users to manually align the 2D contour to the correct position. The aligned contours can be exported as masks facilitating the creation of labeled data for machine learning projects. Furthermore, the tool offers the ability to load a large range of 2D projection types, serving a wide range of general usage scenarios.
 
-![image](https://media.github.sydney.edu.au/user/7187/files/a4a1fb0d-26f6-408b-aaf6-311927c29df3)
+![image](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/assets/63682590/dd201254-1c8b-4b4c-9172-827ab94b69ca)
 
 <br />
 
@@ -58,7 +58,7 @@ The Contour Alignment Tool is an application designed for aligning 3D contour st
 - MATLAB Runtime Version 9.10 can be downloaded [here](https://ssd.mathworks.com/supportfiles/downloads/R2023a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2023a_Update_3_win64.zip). Visit the [MathWorks website](https://au.mathworks.com/products/compiler/matlab-runtime.html) for more details.
 
 ### Installation
-The [latest release](https://github.sydney.edu.au/Image-X/contour-alignment-tool/releases/latest) of the Contour Alignment Tool can be downloaded [here](https://github.sydney.edu.au/Image-X/contour-alignment-tool/releases/download/latest/ContourAlignmentTool.zip).
+The [latest release](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/releases/latest) of the Contour Alignment Tool can be downloaded [here](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/releases/download/latest/ContourAlignmentTool.zip). 
 
 Once downloaded, extract the contents to a local directory.
 
@@ -77,20 +77,20 @@ Suitable data to test the application can be downloaded from the [SPARK Database
 ## Usage
 ### Loading Data
 1.	Run the ContourAlignmentTool executable. Once the application loads, the data processing screen will be displayed as shown below.
-	> **Note** Depending on the system, the application can take several minutes to load.
-	
-	![image](https://media.github.sydney.edu.au/user/7187/files/2a5dc5e4-8668-4c09-8a57-9b9c3b1f819b)
+	> **Warning** Depending on the system, the application can take several minutes to load.
+ 
+	![image](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/assets/63682590/b92997d8-78b9-4dbe-9b14-b4cd9b2c8d8e)
 2.	The data can be loaded by using as shown below the clinical data browse or invidual browse:
     - Individual browse: Select each file or folder individually using the respective browse buttons. 
-    	> **Tip** If the CT, RS, and RP are all within the same folder, the RS and RP files will load automatically when the CT folder is selected.
+    	> **Note** If the CT, RS, and RP are all within the same folder, the RS and RP files will load automatically when the CT folder is selected.
     - Clinical data browse: This option is useful for bulk loading of several patients and fractions. The data must be in the required folder structure. The selected folder should contain a folder for each patient. For each patient, there should be a "Patient Plans" folder containing the plan DICOMs and "Pateint Images" folder containing a folder for each fraction.
 3.	Set the number of projections, pixel spacing, SID, SDD, and detector offset if they differe from the defaults. A warning is displayed if the parameters can not be determined from the file headers.
 
-	![image](https://media.github.sydney.edu.au/user/7187/files/bb06a822-1c10-4bde-b1f5-48a2f28e0499)
+	![image](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/assets/63682590/63ef265a-d369-4985-b8ed-ccb6899f8034)
 4.	Select the Structure of Interest from the dropdown menu.
 5.	Click Proceed, once all data has been selected. The execution time can vary depending on the file type, number of projections, and whether it is executed on a GPU.
 6.	Once the data is processed, labelling of the data can be performed.
-	![image](https://media.github.sydney.edu.au/user/7187/files/a4a1fb0d-26f6-408b-aaf6-311927c29df3)
+	![image](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/assets/63682590/dd201254-1c8b-4b4c-9172-827ab94b69ca)
 
 <br/>
 
