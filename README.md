@@ -58,7 +58,7 @@ The Contour Alignment Tool is an application designed for aligning 3D contour st
 - MATLAB Runtime Version 9.10 can be downloaded [here](https://ssd.mathworks.com/supportfiles/downloads/R2023a/Release/3/deployment_files/installer/complete/win64/MATLAB_Runtime_R2023a_Update_3_win64.zip). Visit the [MathWorks website](https://au.mathworks.com/products/compiler/matlab-runtime.html) for more details.
 
 ### Installation
-The [latest release](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/releases/latest) of the Contour Alignment Tool can be downloaded [here](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/releases/download/latest/ContourAlignmentTool.zip). 
+The [latest release](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/releases/latest) of the Contour Alignment Tool can be downloaded [here](https://github.com/ACRF-Image-X-Institute/contour-alignment-tool/releases/latest/download/ContourAlignmentTool.zip). 
 
 Once downloaded, extract the contents to a local directory.
 
