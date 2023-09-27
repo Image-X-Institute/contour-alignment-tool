@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="482206233" file="C:\GitHub\contour-alignment-tool\ContourAlignmentTool.prj" location="C:\GitHub\contour-alignment-tool" name="ContourAlignmentTool" preferred-package-location="C:\GitHub\contour-alignment-tool\ContourAlignmentTool\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="482206233" file="C:\GitHub\public\contour-alignment-tool\ContourAlignmentTool.prj" location="C:\GitHub\public\contour-alignment-tool" name="ContourAlignmentTool" preferred-package-location="C:\GitHub\contour-alignment-tool\ContourAlignmentTool\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>ContourAlignmentTool</param.appname>
     <param.icon>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon.ico</param.icon>
     <param.icons>
@@ -97,25 +97,33 @@
       <file>${PROJECT_ROOT}\Dependencies</file>
     </fileset.package>
     <fileset.depfun>
+      <file>C:\GitHub\IGT\MATLABModules\Miscellaneous\mhaHeaderTemplate.mat</file>
+      <file>C:\GitHub\IGT\MATLABModules\Miscellaneous\uigetfilepath.m</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\about.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\auto.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\contour.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\first.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_48.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-alignment.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-display.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-issue.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-loading.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-saving.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\last.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\manual.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\next.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\previous.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\reset.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\ROI.png</file>
       <file>${PROJECT_ROOT}\Supporting Apps\AboutSoftware.mlapp</file>
+      <file>${PROJECT_ROOT}\Supporting Apps\CheckForUpdates.mlapp</file>
       <file>${PROJECT_ROOT}\Supporting Apps\DRRviewer.mlapp</file>
       <file>${PROJECT_ROOT}\Supporting Apps\Manual.mlapp</file>
-      <file>${PROJECT_ROOT}\Supporting Apps\NewFeaturesWindow.mlapp</file>
-      <file>C:\GitHub\IGT\MATLABModules\Miscellaneous\mhaHeaderTemplate.mat</file>
-      <file>C:\GitHub\IGT\MATLABModules\Miscellaneous\uigetfilepath.m</file>
     </fileset.depfun>
     <build-deliverables>
-      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="readme.txt" optional="true">C:\GitHub\contour-alignment-tool\ContourAlignmentTool\for_testing\readme.txt</file>
-      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="ContourAlignmentTool.exe" optional="false">C:\GitHub\contour-alignment-tool\ContourAlignmentTool\for_testing\ContourAlignmentTool.exe</file>
-      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="splash.png" optional="false">C:\GitHub\contour-alignment-tool\ContourAlignmentTool\for_testing\splash.png</file>
+      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="ContourAlignmentTool.exe" optional="false">C:\GitHub\public\contour-alignment-tool\ContourAlignmentTool\for_testing\ContourAlignmentTool.exe</file>
+      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="readme.txt" optional="true">C:\GitHub\public\contour-alignment-tool\ContourAlignmentTool\for_testing\readme.txt</file>
+      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="splash.png" optional="false">C:\GitHub\public\contour-alignment-tool\ContourAlignmentTool\for_testing\splash.png</file>
     </build-deliverables>
     <workflow />
     <matlab>
