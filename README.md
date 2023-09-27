@@ -84,8 +84,8 @@ Suitable data to test the application can be downloaded from the [SPARK Database
 	![image](https://github.com/Image-X-Institute/contour-alignment-tool/assets/63682590/c083d152-6e8d-49ae-9d19-ca49de5fb2fc)
 2.	The data can be loaded by using as shown below the clinical data browse or invidual browse:
     - Individual browse: Select each file or folder individually using the respective browse buttons. 
-	> [!NOTE]  
-      	> If the CT, RS, and RP are all within the same folder, the RS and RP files will load automatically when the CT folder is selected.
+	> [!NOTE]
+ 	> If the CT, RS, and RP are all within the same folder, the RS and RP files will load automatically when the CT folder is selected.
     - Clinical data browse: This option is useful for bulk loading of several patients and fractions. The data must be in the required folder structure. The selected folder should contain a folder for each patient. For each patient, there should be a "Patient Plans" folder containing the plan DICOMs and "Pateint Images" folder containing a folder for each fraction.
 3.	Set the number of projections, pixel spacing, SID, SDD, and detector offset if they differe from the defaults. A warning is displayed if the parameters can not be determined from the file headers.
 
