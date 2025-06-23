@@ -67,7 +67,7 @@ Required data types:
 - CT DICOMs
 - Structure DICOM
 - Plan DICOM
-- Kilovoltage images (`.tiff`, `.xim`, `.hnd`, `.hnc`, `.his`)
+- Kilovoltage images (`.tiff`, `.xim`, `.hnd`, `.hnc`, `.his`, `.dcm`)
 
 > Sample data is available from the [SPARK Database](https://ses.library.usyd.edu.au/handle/2123/31090).
 
@@ -81,9 +81,8 @@ Required data types:
    > ⏳ It may take several minutes to load depending on the system.
 
 2. **Load data** via:
-   - **Clinical Data Browse**: Load entire patient datasets.
    - **Individual Browse**: Manually select CT, plan, structure, and image files.
-
+   - **Clinical Data Browse**: Load entire patient datasets. For ROCK-RT data, choose YourHospital/Liver for automatically patients load. **(As Below)**
    ![Data Loading](ContourAlignmentTool_resources/instruction-PatientPlanLoad.png)
 
 3. **Set parameters**:
