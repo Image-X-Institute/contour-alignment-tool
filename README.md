@@ -56,7 +56,7 @@ The Contour Alignment Tool is an application designed for aligning 3D contour st
 ## Getting Started
 ### System Requirements and Prerequisites
 - Windows
-- MATLAB Runtime Version 9.10 can be downloaded [here](https://ssd.mathworks.com/supportfiles/downloads/R2021a/Release/8/deployment_files/installer/complete/win64/MATLAB_Runtime_R2021a_Update_8_win64.zip). Visit the [MathWorks website](https://au.mathworks.com/products/compiler/matlab-runtime.html) for more details.
+- The software is now based on MATLAB Runtime Version 23.2 which can be downloaded [here](https://ssd.mathworks.com/supportfiles/downloads/R2023b/Release/10/deployment_files/installer/complete/win64/MATLAB_Runtime_R2023b_Update_10_win64.zip). Visit the [MathWorks website](https://au.mathworks.com/products/compiler/matlab-runtime.html) for more details.
 
 ### Installation
 The [latest release](https://github.com/Image-X-Institute/contour-alignment-tool/releases/latest) of the Contour Alignment Tool can be downloaded [here](https://github.com/Image-X-Institute/contour-alignment-tool/releases/download/v1.3.6/ContourAlignmentTool-v1.3.6.zip). 
@@ -85,8 +85,10 @@ Suitable data to test the application can be downloaded from the [SPARK Database
 2.	The data can be loaded by using as shown below the clinical data browse or invidual browse:
     - Individual browse: Select each file or folder individually using the respective browse buttons. 
 	> [!NOTE]
- 	> If the CT, RS, and RP are all within the same folder, the RS and RP files will load automatically when the CT folder is selected.
-    - Clinical data browse: This option is useful for bulk loading of several patients and fractions. The data must be in the required folder structure. The selected folder should contain a folder for each patient. For each patient, there should be a "Patient Plans" folder containing the plan DICOMs and "Pateint Images" folder containing a folder for each fraction.
+ 	> To use automatic load, simply click browse under Clinical Data, choose the specific organ/tissue data from the specific hosiptal folder you want to load. Example: PAH/Liver as below which contains various imaging modalities and files.
+  > For Patient Plan files, the software will automatically load all patients' Patient Plans under the PatientPlans folder.
+  ![image](ContourAlignmentTool_resources/instruction-PatientPlanLoad.png)
+  > For Patient Images, the corresponding Fractions (Fx) will be auto-filled according to the patient being specified from Patient Plan. Choose the CBCT fraction images you want to label. There could be multiple CBCT projections within each fraction, so please arrive at FxXX/CBCT/CBCTXX when choose files. 
 3.	Set the number of projections, pixel spacing, SID, SDD, and detector offset if they differe from the defaults. A warning is displayed if the parameters can not be determined from the file headers.
 
 	![image](https://github.com/Image-X-Institute/contour-alignment-tool/assets/63682590/056855ba-4241-4db8-9f68-d51157f54e7f)
@@ -94,7 +96,7 @@ Suitable data to test the application can be downloaded from the [SPARK Database
 5.	Click Proceed, once all data has been selected. The execution time can vary depending on the file type, number of projections, and whether it is executed on a GPU.
 6.	Once the data is processed, labelling of the data can be performed.
 	![image](https://github.com/Image-X-Institute/contour-alignment-tool/assets/63682590/c008bb15-f33d-45a2-8128-b81f123d3a53)
-
+7. The label is forward projected from planning CT and structure set, of which the correctness depends on the geometry file specified. To validate the projection, please use DRR viewer from Display option, making sure the DRR is projected correctly.
 <br/>
 
 ### Contour Alignment
