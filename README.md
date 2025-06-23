@@ -83,6 +83,7 @@ Required data types:
 2. **Load data** via:
    - **Individual Browse**: Manually select CT, plan, structure, and image files.
    - **Clinical Data Browse**: Load entire patient datasets. For ROCK-RT data, choose YourHospital/Liver for automatically patients load. **(As Below)**
+   
    ![Data Loading](ContourAlignmentTool_resources/instruction-PatientPlanLoad.png)
 
 3. **Set parameters**:
