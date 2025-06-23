@@ -83,39 +83,56 @@
       <file>${PROJECT_ROOT}\ContourAlignmentTool.mlapp</file>
     </fileset.main>
     <fileset.resources>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\directories.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\east.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\mhaHeaderTemplate.mat</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\north.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\northeast.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\northwest.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\south.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southeast.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southwest.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\west.png</file>
-      <file>${PROJECT_ROOT}\Supporting Apps</file>
-    </fileset.resources>
-    <fileset.package>
-      <file>${PROJECT_ROOT}\Dependencies</file>
-    </fileset.package>
-    <fileset.depfun>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\about.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\arrows.ai</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\auto.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\contour.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\contrast.ai</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\directories.ai</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\directories.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\east.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\first.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon.ico</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_16.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_24.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_32.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_48.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instruction-PatientPlanLoad.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-alignment.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-display.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-issue.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-loading.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-saving.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions.ai</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\last.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\manual.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\mhaHeaderTemplate.mat</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\navigation.ai</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\next.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\north.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\northeast.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\northwest.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\previous.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\reset.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\ROI.png</file>
-    </fileset.depfun>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\south.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southeast.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southwest.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\splash-large.psd</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\splash-small.psd</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\splash.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\The-X-small.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\The-X.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\west.png</file>
+      <file>${PROJECT_ROOT}\Supporting Apps\AboutSoftware.mlapp</file>
+      <file>${PROJECT_ROOT}\Supporting Apps\CheckForUpdates.mlapp</file>
+      <file>${PROJECT_ROOT}\Supporting Apps\DRRviewer.mlapp</file>
+      <file>${PROJECT_ROOT}\Supporting Apps\Manual.mlapp</file>
+    </fileset.resources>
+    <fileset.package>
+      <file>${PROJECT_ROOT}\Dependencies</file>
+    </fileset.package>
+    <fileset.depfun />
     <build-deliverables>
       <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="splash.png" optional="false">C:\Users\zxio0102\Documents\github\contour-alignment-tool\ContourAlignmentTool\for_testing\splash.png</file>
       <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="ContourAlignmentTool.exe" optional="false">C:\Users\zxio0102\Documents\github\contour-alignment-tool\ContourAlignmentTool\for_testing\ContourAlignmentTool.exe</file>
