@@ -119,9 +119,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             'default_cbct', 'CBCT\CBCT1', ...
             'default_ct', 'CT', ...
             'default_rtplan', 'Plan', ...
-            'default_rtstruct', 'Structure Set', ...
-            'images', 'Patient Images', ...
-            'plans', ["Patient Plans"] ...
+            'default_rtstruct_options', ["Structures", "Structure Set"], ...
+            'images_options', ["PatientImages", "Patient Images"], ...
+            'plans_options', ["PatientPlans", "Patient Plans"] ...
         )
 
         % Parameters       
@@ -1153,13 +1153,14 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
             % Reset the projections list variable
             app.Projections = {};
-            if ~isfield(app.paths, 'projections') || ~ischar(app.paths.projections)
-                % app.paths.projections = [app.paths.master, '\', app.folders.images, '\',app.PatientDropDown.Value];
-                app.paths.projections = [app.paths.master, '\', app.folders.images, '\', app.PatientDropDown.Value, '\', app.folders.default_cbct];
-            end
+            % if ~isfield(app.paths, 'projections') || ~ischar(app.paths.projections)
+            %     % app.paths.projections = [app.paths.master, '\', app.folders.images, '\',app.PatientDropDown.Value];
+            %     app.paths.projections = [app.paths.master, '\', app.folders.images, '\', app.PatientDropDown.Value, '\', app.folders.default_cbct];
+            % end
             % If the user uses the browse function, then open a UI for
             % folder selection
             if browse
+                app.paths.projections = "";
                 app.paths.projections = uigetdir(app.paths.projections, ...
                     'Select the folder containing the intrafraction CBCT images (.tiff, .xim, .hnc, .hnd, .dcm, or .his)');
             
@@ -1380,6 +1381,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.dcmHeaders = {};
             
             if ~browse
+                % Look for default folders.
+                folders = { dir([app.paths.master, '\', app.folders.plans, '\', app.PatientDropDown.Value]).name};
+                for f = app.folders.default_rtstruct_options
+                    if any(folders == f)
+                        app.folders.default_rtstruct = char(f);
+                    end
+                end
                 app.paths.ct = [app.paths.master, '\', app.folders.plans, '\', app.PatientDropDown.Value, '\', app.folders.default_ct];
                 app.paths.plan = [app.paths.master, '\', app.folders.plans, '\', app.PatientDropDown.Value, '\', app.folders.default_rtplan];
                 app.paths.structure = [app.paths.master, '\', app.folders.plans, '\', app.PatientDropDown.Value, '\', app.folders.default_rtstruct];
@@ -2301,13 +2309,25 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Button pushed function: MasterBrowse
         function automatedSearch(app, event)
             % List the patient folders within the selected master folder
-            
             app.paths.master = uigetdir(app.paths.persistent,'Select the clinical trial folder');
 
             if ~isequal(app.paths.master,0)
                 app.paths.persistent = app.paths.master;
             else
                 return
+            end
+
+            % Look for default folders.
+            folders = { dir(app.paths.master).name};
+            for f = app.folders.images_options
+                if any(folders == f)
+                    app.folders.images = char(f);
+                end
+            end
+            for f = app.folders.plans_options
+                if any(folders == f)
+                    app.folders.plans = char(f);
+                end
             end
                         
             patients = dir([app.paths.master, '\', app.folders.plans]);
@@ -2796,7 +2816,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 
                 MhaWriter(app,mhaHeaders{1},mask,fullfile(app.paths.temp,'ROI.mha'));
     
-                %% Foward Projections
+                %% Forward Projections
                 % Check for parallel computing toolbox.
                 if isempty(ver("parallel"))
                     warning("Please install 'parallel computing' toolbox for GPU processing.")
@@ -2821,7 +2841,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     '-o "',fullfile(app.paths.temp,'Geometry.xml"')]);
                 
                 d.Value = 0.5; 
-                d.Message = 'Generating the CT foward projections';
+                d.Message = 'Generating the CT forward projections';
                 
                 % Generate the forward projections
                 system([dep_path, '\forwardprojections',cuda,' ',...
@@ -2833,7 +2853,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                    '--spacing ', num2str(app.PixelSpacingValue.Value)]); 
                 
                 d.Value = 0.7; 
-                d.Message = 'Generating the structure foward projections';
+                d.Message = 'Generating the structure forward projections';
                 
                 system([dep_path, '\forwardprojections',cuda,' ',...
                     '-i "',fullfile(app.paths.temp,'ROI.mha"'),' ',...
@@ -2909,11 +2929,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 % Warn user about missing masks.
                 p_missing = n_missing / length(app.Projections);
                 if p_missing > p_allow
-                    uialert(app.ContourAlignmentToolUIFigure, ['Contour was missing or within ', num2str(margin_mm), 'mm of border for ', num2str(p_missing * 100, '%.1f'), '% (', num2str(n_missing) '/', num2str(length(app.Projections)), ') of projections'], 'Missing contours')
+                    uialert(app.ContourAlignmentToolUIFigure, ['Contour was missing or within ', num2str(margin_mm), 'mm of border for ', num2str(p_missing * 100, '%.1f'), '% (', num2str(n_missing) '/', num2str(length(app.Projections)), ') of projections.'], 'Missing contours')
                 end
-                % For debugging
-                uialert(app.ContourAlignmentToolUIFigure, [num2str(p_missing * 100, '%.1f'), '% of projections were missing.'], 'Testing')
-                
+
                 close(d)
                 
                 
