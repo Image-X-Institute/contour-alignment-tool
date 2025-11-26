@@ -47,6 +47,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         ExportBrowse                  matlab.ui.control.Button
         ExportLabel                   matlab.ui.control.Label
         ImagingParametersPanel        matlab.ui.container.Panel
+        StartAngleLamp                matlab.ui.control.Lamp
+        StartAngleValue               matlab.ui.control.NumericEditField
+        StartAngleLabel               matlab.ui.control.Label
+        StopAngleLamp                 matlab.ui.control.Lamp
+        StopAngleValue                matlab.ui.control.NumericEditField
+        StopAngleLabel                matlab.ui.control.Label
         NumberProj                    matlab.ui.control.Spinner
         AllCheckBox                   matlab.ui.control.CheckBox
         PixelSpacingLamp              matlab.ui.control.Lamp
@@ -113,16 +119,26 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
     % Private properties
     properties (Access = private)
 
+        % Set the application mode - 'alignment' or 'selection'.
+        % mode = "alignment"
+        mode = "alignment";
+        selection_margin = 10;  % mm
+
+        % This is determined upon processing. If no treatment images are
+        % selected then we're prospectively looking at patient DRRs to
+        % determine if they're appropriate for recruitment.
+        isProspective = false;
+
         % Configure folder names - might need to change depending on your
         % folder structure.
         folders = struct( ...
-            'default_cbct', 'CBCT\CBCT1', ...
+            'default_cbct_options', ["CBCT1", "CBCT\CBCT1"], ...
             'default_ct', 'CT', ...
             'default_rtplan', 'Plan', ...
-            'default_rtstruct_options', ["Structures", "Structure Set"], ...
+            'default_rtstruct_options', ["Structures", "Structure Set", "Structure set"], ...
             'images_options', ["PatientImages", "Patient Images"], ...
             'plans_options', ["PatientPlans", "Patient Plans"] ...
-        )
+        );
 
         % Parameters       
         paths
@@ -749,6 +765,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         %   M     : The image stored in a 2D matrix.
         % ------------------------------------------
         function [info,M] = XimReader(~,filename)
+            disp('xim reader')
+            disp(['nargout: ', num2str(nargout)])
             
             %% Input filename
             if nargin < 1
@@ -786,6 +804,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 lookup_table = fread(fid,lookup_table_size*4,'ubit2=>uint8');
                 compressed_pixel_buffer_size = fread(fid,1,'int32');
                 if read_pixel_data==1
+                    disp('reading pixel data')
                     % Decompress image
                     pixel_data = int32(zeros(info.image_width*info.image_height,1));
                     pixel_data(1:info.image_width+1) = fread(fid,info.image_width+1,'*int32');
@@ -1149,7 +1168,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         
         
         % Search the selected folder for projection files. 
-        function updateProjectionsDir(app,browse)
+        function updateProjectionsDir(app, browse)
             
             % Reset the projections list variable
             app.Projections = {};
@@ -1177,8 +1196,16 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     end
                 end
             else
-                app.paths.projections = fullfile(app.paths.master, app.folders.images, ...
-                    app.PatientDropDown.Value, app.FractionDropDown.Value, app.folders.default_cbct);
+                app.paths.projections = '';
+                for i = 1:numel(app.folders.default_cbct_options)
+                    folder = app.folders.default_cbct_options(i);
+                    folderpath = fullfile(app.paths.master, app.folders.images, ...
+                        app.PatientDropDown.Value, app.FractionDropDown.Value, folder);
+                    if isfolder(folderpath)
+                        app.paths.projections = convertStringsToChars(folderpath);
+                        break;
+                    end
+                end
             end
             % Create a progress box
             d = uiprogressdlg(app.ContourAlignmentToolUIFigure,'Title','Data Processing',...
@@ -1300,6 +1327,16 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
                 app.parametersWarning.Visible = 'off';
                 allFilesSelected(app)
+    
+                % Show start/stop angle fields.
+                if app.mode == "selection"
+                    app.StartAngleLabel.Visible = 'on';
+                    app.StartAngleLamp.Visible = 'on';
+                    app.StartAngleValue.Visible = 'on';
+                    app.StopAngleLabel.Visible = 'on';
+                    app.StopAngleLamp.Visible = 'on';
+                    app.StopAngleValue.Visible = 'on';
+                end
 
                 return % exit if no projection files found
             end
@@ -1366,7 +1403,17 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             if app.AllCheckBox.Value
                 app.NumberProj.Value = length(app.Projections);
             end
-            
+
+            % Hide start/stop angle fields.
+            if app.mode == "selection"
+                app.StartAngleLabel.Visible = 'off';
+                app.StartAngleLamp.Visible = 'off';
+                app.StartAngleValue.Visible = 'off';
+                app.StopAngleLabel.Visible = 'off';
+                app.StopAngleLamp.Visible = 'off';
+                app.StopAngleValue.Visible = 'off';
+            end
+
             allFilesSelected(app)
             close(d)
         end
@@ -1429,6 +1476,31 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                         app.paths.plan = fullfile(app.paths.plan, planFiles(k).name);
                         app.PlanLabel.Tooltip = app.paths.plan;
                         planName = planFiles(k).name;
+
+                        % Get gantry angles for first dynamic beam.
+                        beamNames = fieldnames(info.BeamSequence);
+                        for i = 1:length(beamNames)
+                            beam = info.BeamSequence.(beamNames{i});
+                            if beam.BeamType == "DYNAMIC"
+                                cpNames = fieldnames(beam.ControlPointSequence);
+                                angles = zeros(numel(cpNames), 1);
+                                for j = 1:length(cpNames)
+                                    angles(j) = beam.ControlPointSequence.(cpNames{j}).GantryAngle;
+                                end
+
+                                break;
+                            end
+                        end
+
+                        % Set start/stop angle.
+                        angles_uw = unwrap(angles * pi/180) * 180/pi;
+                        if max(angles_uw) > 360
+                            angles_uw = angles_uw - 360;
+                        end
+                        app.StartAngleValue.Value = min(angles_uw);
+                        app.StopAngleValue.Value = max(angles_uw);
+                        [app.StartAngleLamp.Color, app.StopAngleLamp.Color] = deal([0.31,0.80,0.00]);
+
                         break;
                     end
                 end
@@ -1521,11 +1593,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Determine if all of the required files have been selected.
         % If so, allow the user to proceed and process the data
         function allFilesSelected(app)
-        
             if app.SelectStructureStatus.BackgroundColor(3) == 0 ...
                     && app.PlanLabel.FontColor(3) == 0 ...
                     && app.CTLabel.FontColor(3) == 0 ...
-                    && app.ProjectionsLabel.FontColor(3) == 0
+                    && (app.mode == "selection" || app.ProjectionsLabel.FontColor(3) == 0)  % In "selection" mode, you can perform prospective selection - without treatment images.
                 
                 app.StartProcessing.Enable = 'on';
                 
@@ -1539,68 +1610,95 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Load the projections and DRRs for the current frame
         function loadImages(app)
 
-            % Load the projection
-            if strcmp(app.fileType,'.tiff')
-                app.projection = imread([app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
-                app.projection = app.projection(1:768,1:1024);
-                app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
-                app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
-                
-            elseif strcmp(app.fileType,'.xim')
-                proj_path = [app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name];
-                [~, app.projection] = XimReader(app, proj_path);
-                if any(size(app.projection) == [0, 0])
-                    uialert(app.ContourAlignmentToolUIFigure, ['Empty projection found at path: ', proj_path], 'Empty projection')
-                    return
+            % Load the projection.
+            if ~app.isProspective
+                if strcmp(app.fileType,'.tiff')
+                    app.projection = imread([app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
+                    app.projection = app.projection(1:768,1:1024);
+                    app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
+                    app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
+                    
+                elseif strcmp(app.fileType,'.xim')
+                    proj_path = [app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name];
+                    [~, app.projection] = XimReader(app, proj_path);
+                    if any(size(app.projection) == [0, 0])
+                        uialert(app.ContourAlignmentToolUIFigure, ['Empty projection found at path: ', proj_path], 'Empty projection')
+                        return
+                    end
+                    app.projection = imrotate(app.projection,-90);
+                    app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
+                    app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
+                    
+                elseif strcmp(app.fileType,'.hnc')
+                    [~, app.projection] = HncReader(app,[app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
+                    app.projection = imrotate(app.projection,-90);
+                    app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
+                    app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
+                    
+                elseif strcmp(app.fileType,'.hnd')
+                    [~, app.projection] = HndReader(app,[app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
+                    app.projection = imrotate(app.projection,90);
+                    app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
+                    app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
+                    
+                elseif strcmp(app.fileType,'.his') 
+                    [~, app.projection] = HisReader(app,[app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
+                    app.projection = imrotate(app.projection,-90);
+                    app.DRR = imrotate(app.DRRs(:,:,app.currentFrame),-90);
+                    app.Mask = imrotate(app.Masks(:,:,app.currentFrame),-90);
+                elseif strcmp(app.fileType, '.dcm')
+                    framePath = fullfile(app.Projections(app.currentFrame).folder, ...
+                                         app.Projections(app.currentFrame).name);
+                    
+                    % Load the frame from the .mat file
+                    frameData = load(framePath, 'frame');
+                    app.projection = frameData.frame;
+                            
+                    % Load DRR and Mask as in other formats
+                    app.DRR = permute(app.DRRs(:,:,app.currentFrame), [2 1 3]);
+                    app.Mask = permute(app.Masks(:,:,app.currentFrame), [2 1 3]);
                 end
-                app.projection = imrotate(app.projection,-90);
+            else
+                % Prospective use case doesn't have treatment images.
                 app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
                 app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
-                
-            elseif strcmp(app.fileType,'.hnc')
-                [~, app.projection] = HncReader(app,[app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
-                app.projection = imrotate(app.projection,-90);
-                app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
-                app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
-                
-            elseif strcmp(app.fileType,'.hnd')
-                [~, app.projection] = HndReader(app,[app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
-                app.projection = imrotate(app.projection,90);
-                app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
-                app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
-                
-            elseif strcmp(app.fileType,'.his') 
-                [~, app.projection] = HisReader(app,[app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
-                app.projection = imrotate(app.projection,-90);
-                app.DRR = imrotate(app.DRRs(:,:,app.currentFrame),-90);
-                app.Mask = imrotate(app.Masks(:,:,app.currentFrame),-90);
-            elseif strcmp(app.fileType, '.dcm')
-                framePath = fullfile(app.Projections(app.currentFrame).folder, ...
-                                     app.Projections(app.currentFrame).name);
-                
-                % Load the frame from the .mat file
-                frameData = load(framePath, 'frame');
-                app.projection = frameData.frame;
-                        
-                % Load DRR and Mask as in other formats
-                app.DRR = permute(app.DRRs(:,:,app.currentFrame), [2 1 3]);
-                app.Mask = permute(app.Masks(:,:,app.currentFrame), [2 1 3]);
             end
-            
             
             app.DRR = double(app.DRR);
             app.DRR = (app.DRR - min(app.DRR(:)))/(max(app.DRR(:)) - min(app.DRR(:)));
+
+            % Add 10mm margin to DRR.
+            if app.mode == "selection"
+                margin_px = floor(app.selection_margin / app.PixelSpacingValue.Value);
+                margin_val = max(app.DRR(:));
+                app.DRR(:, margin_px) = margin_val;
+                app.DRR(:, end - margin_px) = margin_val;
+                app.DRR(margin_px, :) = margin_val;
+                app.DRR(end - margin_px, :) = margin_val;
+            end
             
             app.Mask = imbinarize(app.Mask,0);
             app.MaskOutline = boundarymask(app.Mask);
     
-            app.projection = double(app.projection);
-            app.projection = log(app.projection + 1);
-            app.projection = (app.projection - min(app.projection(:)))/(max(app.projection(:)) - min(app.projection(:)));
+            if ~app.isProspective
+                app.projection = double(app.projection);
+                app.projection = log(app.projection + 1);
+                app.projection = (app.projection - min(app.projection(:)))/(max(app.projection(:)) - min(app.projection(:)));
             
-            if  app.InvertIntensityMenu.Checked
-                app.projection = imcomplement(app.projection);
-            end  
+                if app.InvertIntensityMenu.Checked
+                    app.projection = imcomplement(app.projection);
+                end
+
+                % Add 10mm margin to kV projection.
+                if app.mode == "selection"
+                    margin_px = floor(app.selection_margin / app.PixelSpacingValue.Value);
+                    margin_val = max(app.projection(:));
+                    app.projection(:, margin_px) = margin_val;
+                    app.projection(:, end - margin_px) = margin_val;
+                    app.projection(margin_px, :) = margin_val;
+                    app.projection(end - margin_px, :) = margin_val;
+                end
+            end
         end
         
         
@@ -1613,51 +1711,57 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 updateDRR(DRRviewer)
             end
             
-
+            % Select the image on which the contrast adjustment tools
+            % operate.
+            if ~app.isProspective
+                image = app.projection;
+            else
+                image = app.DRR;
+            end
             
             if app.contrastAutoButton.Value || app.contrastManualButton.Value
                 
                 if strcmp(app.fileType,'.his') 
                     if app.InvertIntensityMenu.Checked
-                        lower = prctile(app.projection(:),0);
-                        upper = prctile(app.projection(:),90);
+                        lower = prctile(image(:),0);
+                        upper = prctile(image(:),90);
                         
                         if app.contrastAutoButton.Value
-                            app.LowerSlider.Value = (prctile(app.projection(:),1)-lower)/(upper-lower);
-                            app.UpperSlider.Value = (prctile(app.projection(:),80)-lower)/(upper-lower);
+                            app.LowerSlider.Value = (prctile(image(:),1)-lower)/(upper-lower);
+                            app.UpperSlider.Value = (prctile(image(:),80)-lower)/(upper-lower);
                         end
 
                     else
-                        lower = prctile(app.projection(:),10);
-                        upper = prctile(app.projection(:),100);
+                        lower = prctile(image(:),10);
+                        upper = prctile(image(:),100);
                         
                         if app.contrastAutoButton.Value
-                            app.LowerSlider.Value = (prctile(app.projection(:),20)-lower)/(upper-lower);
-                            app.UpperSlider.Value = (prctile(app.projection(:),99)-lower)/(upper-lower);
+                            app.LowerSlider.Value = (prctile(image(:),20)-lower)/(upper-lower);
+                            app.UpperSlider.Value = (prctile(image(:),99)-lower)/(upper-lower);
                         end
 
                     end
                 else
                     if app.InvertIntensityMenu.Checked  
                         
-                        lower = min(app.projection(:));
-                        upper = max(app.projection(:));
-%                         lower = prctile(app.projection(:),1);
-%                         upper = prctile(app.projection(:),99.9);
+                        lower = min(image(:));
+                        upper = max(image(:));
+%                         lower = prctile(image(:),1);
+%                         upper = prctile(image(:),99.9);
                         
                         if app.contrastAutoButton.Value
-                            app.LowerSlider.Value = (prctile(app.projection(:),5)-lower)/(upper-lower);
-                            app.UpperSlider.Value = (prctile(app.projection(:),99.5)-lower)/(upper-lower);
+                            app.LowerSlider.Value = (prctile(image(:),5)-lower)/(upper-lower);
+                            app.UpperSlider.Value = (prctile(image(:),99.5)-lower)/(upper-lower);
                         end
                         
                     else
-                        lower = min(app.projection(:));
-                        upper = max(app.projection(:));
-%                         lower = prctile(app.projection(:),0.1);
-%                         upper = prctile(app.projection(:),99);
+                        lower = min(image(:));
+                        upper = max(image(:));
+%                         lower = prctile(image(:),0.1);
+%                         upper = prctile(image(:),99);
                         if app.contrastAutoButton.Value
-                            app.LowerSlider.Value = (prctile(app.projection(:),0.5)-lower)/(upper-lower);
-                            app.UpperSlider.Value = (prctile(app.projection(:),95)-lower)/(upper-lower);
+                            app.LowerSlider.Value = (prctile(image(:),0.5)-lower)/(upper-lower);
+                            app.UpperSlider.Value = (prctile(image(:),95)-lower)/(upper-lower);
                         end
                     end
                 end
@@ -1698,7 +1802,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 % upper = max(max(app.projection(windowposition(1):windowposition(2),...
                 %     windowposition(3):windowposition(4))));  
                 % Get the region inside the mask
-                maskedValues = app.projection(app.Mask > 0);
+                maskedValues = image(app.Mask > 0);
                 
                 % Exclude zero values
                 maskedValues = maskedValues(maskedValues > 0);
@@ -1717,7 +1821,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
             val1 = app.LowerSlider.Value * (upper-lower)+lower;
             val2 = app.UpperSlider.Value * (upper-lower)+lower;
-            histogram(app.Histogram,app.projection,100, 'BinLimits',[lower,upper],'EdgeColor','none','FaceColor',[0.65,0.65,0.65]);  
+            histogram(app.Histogram,image,100, 'BinLimits',[lower,upper],'EdgeColor','none','FaceColor',[0.65,0.65,0.65]);  
             
 
 
@@ -1731,7 +1835,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             end
             
             % Display the projection and contour
-            imshow(app.projection,[min([val1,val2])*max(app.projection(:)) max([val1,val2])*max(app.projection(:))],'Parent',app.UIAxes,'XData', [1 app.displaySize(1)],'YData', [1 app.displaySize(2)]);
+            imshow(image,[min([val1,val2])*max(image(:)) max([val1,val2])*max(image(:))],'Parent',app.UIAxes,'XData', [1 app.displaySize(1)],'YData', [1 app.displaySize(2)]);
             app.UIAxes.XLim = [1 app.displaySize(1)];
             app.UIAxes.YLim = [1 app.displaySize(2)];
             
@@ -1755,6 +1859,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         
         % Update the the confidence label of the current image
         function save(app)
+            if app.isProspective
+                return;
+            end
 
             % Get current name
             current = sprintf('Image %d (%.2f%c)',app.currentFrame,app.Projections(app.currentFrame).angle,char(176));
@@ -1855,6 +1962,14 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
             % Update the current image number
             app.projectionnumber.Text = num2str(app.currentFrame);
+
+            % Highlight the current image.
+
+
+
+            if app.isProspective
+                return;
+            end
             
             % Set the confidence
             if app.Projections(app.currentFrame).confidence == 5
@@ -2067,6 +2182,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Reset the projections list
             app.C0Button.Value = 1;
             app.C0Node.Text = '0: Unlabelled';
+            % Re-add these nodes - may have been deleted
+            app.C1Node = uitreenode(app.Tree);
+            app.C2Node = uitreenode(app.Tree);
+            app.C3Node = uitreenode(app.Tree);
+            app.C4Node = uitreenode(app.Tree);
+            app.C5Node = uitreenode(app.Tree);
             app.C1Node.Text = '1: Not at all confident';
             app.C2Node.Text = '2: Not very confident';
             app.C3Node.Text = '3: Neither';
@@ -2156,6 +2277,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
             [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
             app.parametersWarning.Visible = 'off';
+
+            allFilesSelected(app);
         end
         
         
@@ -2197,8 +2320,33 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             addpath(fullfile(appRoot, 'Dependencies'));
 
             % Set the UI window name
-            app.ContourAlignmentToolUIFigure.Name = sprintf('Contour Alignment Tool %s',app.version);
-            
+            disp(app.mode)
+            if app.mode == "alignment"
+                app.ContourAlignmentToolUIFigure.Name = sprintf('Contour Alignment Tool (v%s)', app.version);
+            elseif app.mode == "selection"
+                app.ContourAlignmentToolUIFigure.Name = sprintf('Patient Selection Tool (v%s)', app.version);
+            end
+
+            % Change the background image.
+            app.DirectoriesImage.ImageSource = 'alignment-directories.png';
+            % if app.mode == "alignment"
+            %     app.DirectoriesImage.ImageSource = 'alignment-directories.png';
+            % elseif app.mode == "selection"
+            %     app.DirectoriesImage.ImageSource = 'selection-directories.png';
+            % end
+
+            % Change "image parameters" based on mode.
+            if app.mode == "alignment"
+                app.StartAngleLabel.Visible = 'off';
+                app.StartAngleLamp.Visible = 'off';
+                app.StartAngleValue.Visible = 'off';
+                app.StopAngleLabel.Visible = 'off';
+                app.StopAngleLamp.Visible = 'off';
+                app.StopAngleValue.Visible = 'off';
+            elseif app.mode == "selection"
+                app.NumberProj.Value = 35;
+            end
+
             % Disable interactivity
             disableDefaultInteractivity(app.UIAxes)
             disableDefaultInteractivity(app.Histogram)
@@ -2340,13 +2488,14 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.PatientDropDown.Enable = 'on';
         end
 
-        % Value changed function: PatientDropDown
+        % Callback function
         function refreshFractions(app, event)
             % If the user selects a new patient from the dropdown, load the
             % new list of fraction folders.
             if ~strcmp(app.PatientDropDown.Value,'Select patient')
             
                 fractions = dir([app.paths.master, '\', app.folders.images, '\' ,app.PatientDropDown.Value]);
+                fractions(strcmp({s.name}, "temp")) = [];
                 dirFlags = [fractions.isdir];
                 dirFlags(1:2) = 0;
                 fractions = fractions(dirFlags);
@@ -2378,6 +2527,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.ProjectionsLabel.FontColor = [1.00,0.41,0.16];
             [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
             app.parametersWarning.Visible = 'off';
+            % 
+            % if app.mode == "selection"
+            %     app.paths.export = [app.paths.master, '\', app.folders.images, '\', app.PatientDropDown.Value];
+            % end
         end
 
         % Value changed function: FractionDropDown
@@ -2558,6 +2711,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
         % Button pushed function: StartProcessing
         function StartProcessingButtonPushed(app, event)
+            % Determine if we're in "prospective" mode - i.e. no
+            % treatment images available.
+            if app.mode == "selection" && isempty(app.Projections)
+                app.isProspective = true;
+            else
+                app.isProspective = false;
+            end
 
             try
 
@@ -2590,31 +2750,33 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 end
                 
                 % Select a subset of projections 
-                if ~app.AllCheckBox.Value
-                    updatedProjections = struct('name',[],'folder',[]);
-                    updatedFrames = zeros(1, app.NumberProj.Value);
-                    
-                    projNum = round(linspace(1,length(app.Projections),app.NumberProj.Value));
-    
-                    k = 1;
-                    for i = 1:app.NumberProj.Value
+                if ~isempty(app.Projections)
+                    if ~app.AllCheckBox.Value
+                        updatedProjections = struct('name',[],'folder',[]);
+                        updatedFrames = zeros(1, app.NumberProj.Value);
                         
-                        updatedProjections(k).name = app.Projections(projNum(k)).name;
-                        updatedProjections(k).folder = app.Projections(projNum(k)).folder;
-                        
-                        if strcmp(app.fileType,'.his') 
-                            updatedFrames(k) = info.Frames.Frame(projNum(k)).GantryAngle;
+                        projNum = round(linspace(1,length(app.Projections),app.NumberProj.Value));
+        
+                        k = 1;
+                        for i = 1:app.NumberProj.Value
+                            
+                            updatedProjections(k).name = app.Projections(projNum(k)).name;
+                            updatedProjections(k).folder = app.Projections(projNum(k)).folder;
+                            
+                            if strcmp(app.fileType,'.his') 
+                                updatedFrames(k) = info.Frames.Frame(projNum(k)).GantryAngle;
+                            end
+                            
+                            k = k+1;
                         end
                         
-                        k = k+1;
-                    end
-                    
-                    app.Projections = updatedProjections;
-                elseif strcmp(app.fileType,'.his') 
-                    updatedFrames = zeros(1, app.NumberProj.Value);
-                    
-                    for i = 1:app.NumberProj.Value
-                        updatedFrames(i) = info.Frames.Frame(i).GantryAngle;
+                        app.Projections = updatedProjections;
+                    elseif strcmp(app.fileType,'.his') 
+                        updatedFrames = zeros(1, app.NumberProj.Value);
+                        
+                        for i = 1:app.NumberProj.Value
+                            updatedFrames(i) = info.Frames.Frame(i).GantryAngle;
+                        end
                     end
                 end
                             
@@ -2629,93 +2791,107 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 end
                 
                 % Loop through all projections and acquire the angle
-                for i = 1:length(app.Projections)
-                    
-                    if strcmp(app.fileType,'.tiff')
-                        filename = app.Projections(i).name;
-                        number_index = find(filename == '_');
-                        endIndex = find(filename == '.');
-                        projectionAngle = str2double(filename(number_index(3)+1 : endIndex(2)-1));
-                        projectionAngle = projectionAngle + 90 + offset;
-                        app.imageSize = [768 1024];
-                    
-                    elseif strcmp(app.fileType,'.xim')
-                        [info, ~] = XimReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
-                        projectionAngle = info.properties.GantryRtn + 90 - offset; 
-                        app.imageSize = [768 1024];
+                if ~app.isProspective
+                    for i = 1:length(app.Projections)
                         
-                    elseif strcmp(app.fileType,'.hnc') 
-                        [info, ~] = HncReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
-                        projectionAngle = info.dCBCTPositiveAngle - 90 - offset; 
-                        app.imageSize = [768 1024];
+                        if strcmp(app.fileType,'.tiff')
+                            filename = app.Projections(i).name;
+                            number_index = find(filename == '_');
+                            endIndex = find(filename == '.');
+                            projectionAngle = str2double(filename(number_index(3)+1 : endIndex(2)-1));
+                            projectionAngle = projectionAngle + 90 + offset;
+                            app.imageSize = [768 1024];
                         
-                    elseif strcmp(app.fileType,'.hnd') 
-                        [info, ~] = HndReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
-                        projectionAngle = info.dCBCTPositiveAngle - 90 - offset; 
-                        app.imageSize = [768 1024];
+                        elseif strcmp(app.fileType,'.xim')
+                            disp(['loading .xim file: ', num2str(i)])
+                            info = XimReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
+                            disp('loaded')
+                            projectionAngle = info.properties.GantryRtn + 90 - offset; 
+                            app.imageSize = [768 1024];
+                            
+                        elseif strcmp(app.fileType,'.hnc') 
+                            info = HncReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
+                            projectionAngle = info.dCBCTPositiveAngle - 90 - offset; 
+                            app.imageSize = [768 1024];
+                            
+                        elseif strcmp(app.fileType,'.hnd') 
+                            info = HndReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
+                            projectionAngle = info.dCBCTPositiveAngle - 90 - offset; 
+                            app.imageSize = [768 1024];
+                            
+                        elseif strcmp(app.fileType,'.his') 
+                            projectionAngle = updatedFrames(i) - 90 - offset;
+                            app.imageSize = [512 512];
+                            app.offsetValue.Value = -1*app.offsetValue.Value;
                         
-                    elseif strcmp(app.fileType,'.his') 
-                        projectionAngle = updatedFrames(i) - 90 - offset;
-                        app.imageSize = [512 512];
-                        app.offsetValue.Value = -1*app.offsetValue.Value;
-                    
-                    elseif strcmp(app.fileType, '.dcm')
-                    [~, baseName, ~] = fileparts(app.Projections(i).name);
-                    headerName = [baseName, '_header.mat'];
-                    headerPath = fullfile(app.Projections(i).folder, headerName);
-                    
-                    % Load DICOM header
-                    headerData = load(headerPath, 'info');
-                    info = headerData.info;
-                    
-                    % Extract frame index from filename (e.g., 'frame03.mat')
-                    frameIndex = 1;
-                    frameMatch = regexp(app.Projections(i).name, 'frame(\d+)\.mat', 'tokens');
-                    if ~isempty(frameMatch)
-                        frameIndex = str2double(frameMatch{1}{1});
-                    end
-                    
-                    % Try to get GantryAngle from ExposureSequence (named fields like Item_3)
-                    gantryAngle = NaN;
-                    if isfield(info, 'ExposureSequence')
-                        itemName = sprintf('Item_%d', frameIndex);
-                        if isfield(info.ExposureSequence, itemName)
-                            exposure = info.ExposureSequence.(itemName);
-                            if isfield(exposure, 'GantryAngle')
-                                gantryAngle = exposure.GantryAngle;
+                        elseif strcmp(app.fileType, '.dcm')
+                        [~, baseName, ~] = fileparts(app.Projections(i).name);
+                        headerName = [baseName, '_header.mat'];
+                        headerPath = fullfile(app.Projections(i).folder, headerName);
+                        
+                        % Load DICOM header
+                        headerData = load(headerPath, 'info');
+                        info = headerData.info;
+                        
+                        % Extract frame index from filename (e.g., 'frame03.mat')
+                        frameIndex = 1;
+                        frameMatch = regexp(app.Projections(i).name, 'frame(\d+)\.mat', 'tokens');
+                        if ~isempty(frameMatch)
+                            frameIndex = str2double(frameMatch{1}{1});
+                        end
+                        
+                        % Try to get GantryAngle from ExposureSequence (named fields like Item_3)
+                        gantryAngle = NaN;
+                        if isfield(info, 'ExposureSequence')
+                            itemName = sprintf('Item_%d', frameIndex);
+                            if isfield(info.ExposureSequence, itemName)
+                                exposure = info.ExposureSequence.(itemName);
+                                if isfield(exposure, 'GantryAngle')
+                                    gantryAngle = exposure.GantryAngle;
+                                end
                             end
                         end
+                        
+                        % Fallback to global GantryAngle if per-frame not found
+                        if isnan(gantryAngle) && isfield(info, 'GantryAngle')
+                            gantryAngle = info.GantryAngle;
+                        end
+                        
+                        % Final projection angle
+                        projectionAngle = gantryAngle + 90 - offset;
+                        
+                        % Set image size
+                        if isfield(info, 'Rows') && isfield(info, 'Columns')
+                            app.imageSize = [info.Rows, info.Columns];
+                        else
+                            app.imageSize = [768 1024];  % fallback
+                        end
+                        end
+    
+                        % Change angles to be between 0 and 360
+                        while projectionAngle > 360
+                            projectionAngle = projectionAngle - 360;
+                        end
+                        while projectionAngle < 0
+                            projectionAngle = projectionAngle + 360;
+                        end
+                        
+                        % Save the projection angle to a csv file
+                        app.Projections(i).angle = projectionAngle;
+                        fprintf(file, '%.4f\n', projectionAngle);
+                        d.Value = (i/length(app.Projections))/4; 
+                        
                     end
-                    
-                    % Fallback to global GantryAngle if per-frame not found
-                    if isnan(gantryAngle) && isfield(info, 'GantryAngle')
-                        gantryAngle = info.GantryAngle;
-                    end
-                    
-                    % Final projection angle
-                    projectionAngle = gantryAngle + 90 - offset;
-                    
-                    % Set image size
-                    if isfield(info, 'Rows') && isfield(info, 'Columns')
-                        app.imageSize = [info.Rows, info.Columns];
-                    else
-                        app.imageSize = [768 1024];  % fallback
-                    end
+                else
+                    % Prospective mode, get angles from start/stop angle.
+                    angles = linspace(app.StartAngleValue.Value, app.StopAngleValue.Value, app.NumberProj.Value);
+                    for i = 1:length(angles)
+                        fprintf(file, '%.4f\n', angles(i));
                     end
 
-                    % Change angles to be between 0 and 360
-                    while projectionAngle > 360
-                        projectionAngle = projectionAngle - 360;
-                    end
-                    while projectionAngle < 0
-                        projectionAngle = projectionAngle + 360;
-                    end
-                    
-                    % Save the projection angle to a csv file
-                    app.Projections(i).angle = projectionAngle;
-                    fprintf(file, '%.4f\n', projectionAngle);
-                    d.Value = (i/length(app.Projections))/4; 
-                    
+                    % Set image size - this is typically obtained from
+                    % the kV images.
+                    app.imageSize = [768 1024];
                 end
                 
                 fclose(file);
@@ -2832,7 +3008,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 % Generate the simulated geometry file
                 script_path = mfilename('fullpath');
                 [project_path, ~, ~] = fileparts(mfilename('fullpath'));
-                dep_path = [project_path, '\Dependencies']
+                dep_path = [project_path, '\Dependencies'];
                 system([dep_path, '\geometry',cuda,' ',...
                     '-i "',fullfile(app.paths.temp,'ProjectionAngles.csv"'),' ',...
                     '--sid ', num2str(app.SIDvalue.Value),' ',...
@@ -2881,74 +3057,91 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 elseif app.PurpleMenu.Checked
                     app.colour = cat(3, ones(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2)));
                 end
-      
-                
-                [app.Projections.confidence] = deal(0);
+     
+                if ~app.isProspective
+                    [app.Projections.confidence] = deal(0);
+                end
                 
                 [~,app.DRRs] = MhaReader(app, fullfile(app.paths.temp,'CT_FP.mha'));
                 [~,app.Masks] = MhaReader(app, fullfile(app.paths.temp,'ROI_FP.mha'));
                 app.originalMasks = app.Masks;
 
-                %% Check what proportion of masks are visible.
-                % How do we do this? 
-                % For each mask (dim=3 of app.Masks), see if there's any
-                % foreground.
-                % If there is foreground, is it at least 10mm from the
-                % margin? This ensures that the mask is not cropped - we
-                % could shrink the margin if necessary.
-                n_missing = 0;
-                p_allow = 0.1;
-                margin_mm = 10;
-                for i = 1:length(app.Projections)
-                    if i == 23
-                        [];
-                    end
-                    mask = app.Masks(:, :, i);
-                    if all(mask == 0, 'all')  % Empty mask.
-                        n_missing = n_missing + 1;
-                        disp(['missing: ', num2str(i)])
-                    else
-                        % Crop mask by margin.
-                        margin_px = floor(margin_mm / app.PixelSpacingValue.Value);
-                        mask = mask(1 + margin_px:end - margin_px, 1 + margin_px:end - margin_px);
-    
-                        % Check for foreground edge voxels.
-                        maskHasBorderPixels = ...
-                            any(mask(1, :) ~= 0)   || ...
-                            any(mask(end, :) ~= 0) || ...
-                            any(mask(:, 1) ~= 0)   || ...
-                            any(mask(:, end) ~= 0);      
-
-                        if all(mask == 0, 'all') || maskHasBorderPixels
+                if app.mode == "selection"
+                    %% Check what proportion of masks are visible.
+                    % How do we do this? 
+                    % For each mask (dim=3 of app.Masks), see if there's any
+                    % foreground.
+                    % If there is foreground, is it at least 10mm from the
+                    % margin? This ensures that the mask is not cropped - we
+                    % could shrink the margin if necessary.
+                    n_missing = 0;
+                    n_masks = size(app.Masks, 3);
+                    for i = 1:n_masks
+                        mask = app.Masks(:, :, i);
+                        if all(mask == 0, 'all')  % Empty mask.
                             n_missing = n_missing + 1;
                             disp(['missing: ', num2str(i)])
+                        else
+                            % Crop mask by margin.
+                            margin_px = floor(app.selection_margin / app.PixelSpacingValue.Value);
+                            mask = mask(1 + margin_px:end - margin_px, 1 + margin_px:end - margin_px);
+        
+                            % Check for foreground edge voxels.
+                            maskHasBorderPixels = ...
+                                any(mask(1, :) ~= 0)   || ...
+                                any(mask(end, :) ~= 0) || ...
+                                any(mask(:, 1) ~= 0)   || ...
+                                any(mask(:, end) ~= 0);      
+    
+                            if all(mask == 0, 'all') || maskHasBorderPixels
+                                n_missing = n_missing + 1;
+                                disp(['missing: ', num2str(i)])
+                            end
                         end
                     end
-                end
-
-                % Warn user about missing masks.
-                p_missing = n_missing / length(app.Projections);
-                if p_missing > p_allow
-                    uialert(app.ContourAlignmentToolUIFigure, ['Contour was missing or within ', num2str(margin_mm), 'mm of border for ', num2str(p_missing * 100, '%.1f'), '% (', num2str(n_missing) '/', num2str(length(app.Projections)), ') of projections.'], 'Missing contours')
+    
+                    % Warn user about missing masks.
+                    p_missing = n_missing / n_masks;
+                    uialert(app.ContourAlignmentToolUIFigure, ['Contour was missing or within ', num2str(app.selection_margin), 'mm of border for ', num2str(p_missing * 100, '%.1f'), '% (', num2str(n_missing) '/', num2str(n_masks), ') of projections.'], 'Missing contours')
                 end
 
                 close(d)
                 
-                
-                for k1 = 1:length(app.Projections)
-                    uitreenode(app.C0Node,"Text", sprintf('Image %d (%.2f%c)',k1,app.Projections(k1).angle,char(176))); 
+                if ~app.isProspective
+                    % Adds projections to the list of unlabelled images.
+                    for k1 = 1:length(app.Projections)
+                        uitreenode(app.C0Node,"Text", sprintf('Image %d (%.2f%c)',k1,app.Projections(k1).angle,char(176))); 
+                    end
+                    
+                    % Update the label of each node to display the number of images
+                    app.C0Node.Text = sprintf('0: Unlabelled (%d images)',size(app.C0Node.Children,1));
+                    app.C1Node.Text = sprintf('1: Not at all confident (%d images)',size(app.C1Node.Children,1));
+                    app.C2Node.Text = sprintf('2: Not very confident (%d images)',size(app.C2Node.Children,1));
+                    app.C3Node.Text = sprintf('3: Neither (%d images)',size(app.C3Node.Children,1));
+                    app.C4Node.Text = sprintf('4: Fairly confident (%d images)',size(app.C4Node.Children,1));
+                    app.C5Node.Text = sprintf('5: Very confident (%d images)',size(app.C5Node.Children,1));
+                else
+                    % Adjust first node text.
+                    % Delete other nodes - but keep references so they can
+                    % be re-added when a new session is started.
+                    app.C0Node.Text = "DRRs";
+                    app.C1Node.delete;
+                    app.C2Node.delete;
+                    app.C3Node.delete;
+                    app.C4Node.delete;
+                    app.C5Node.delete;
+
+                    % Create list of DRRs.
+                    n_DRRs = size(app.DRRs, 3);
+                    for i = 1:n_DRRs
+                        uitreenode(app.C0Node, "Text", sprintf('Image %d (%.2f%c)', i, angles(i), char(176))); 
+                    end
                 end
-                
-                % Update the label of each node to display the number of images
-                app.C0Node.Text = sprintf('0: Unlabelled (%d images)',size(app.C0Node.Children,1));
-                app.C1Node.Text = sprintf('1: Not at all confident (%d images)',size(app.C1Node.Children,1));
-                app.C2Node.Text = sprintf('2: Not very confident (%d images)',size(app.C2Node.Children,1));
-                app.C3Node.Text = sprintf('3: Neither (%d images)',size(app.C3Node.Children,1));
-                app.C4Node.Text = sprintf('4: Fairly confident (%d images)',size(app.C4Node.Children,1));
-                app.C5Node.Text = sprintf('5: Very confident (%d images)',size(app.C5Node.Children,1));
                             
-                % Update the image details dialogue 
-                updateImageDetails(app)
+                % Update the image details dialogue
+                if ~app.isProspective
+                    updateImageDetails(app)
+                end
                 loadImages(app)               
                 updatePlot(app) 
                 expand(app.Tree)
@@ -2956,18 +3149,20 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 % Enable the contour alignment components
                 app.DataProcessingPanel.Visible = 'off';
                 app.NavigationPanel.Enable = 'on';
-                app.ContourAlignmentPanel.Enable = 'on';
+                if ~app.isProspective
+                    app.ContourAlignmentPanel.Enable = 'on';
+                    app.DRRViewerMenu.Enable = 'on';
+                    app.ExportMenu.Enable = 'on';
+                    app.ExportAsMenu.Enable = 'on';
+                    app.QuickExportMenu.Visible = 'on';
+                end
                 app.ContrastAdjustmentPanel.Enable = 'on';
                 app.UIAxes.Visible = 'on';
                 app.ContourColourMenu.Enable = 'on';
                 app.ContourFillMenu.Enable = 'on';
-                app.DRRViewerMenu.Enable = 'on';
-                app.ExportMenu.Enable = 'on';
-                app.ExportAsMenu.Enable = 'on';
                 app.NewFractionMenu.Enable = 'on';
                 app.NewPatientMenu.Enable = 'on';
                 app.InvertIntensityMenu.Enable = 'on';
-                app.QuickExportMenu.Visible = 'on';
             
             % If there is an error during data processing, re-enable the
             % browsing buttons and save the error log.
@@ -3006,13 +3201,11 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         function PreviousPushed(app, event)
             % Go to the previous frame if possible        
             if app.currentFrame - 1 > 0
-
                 save(app)
                 app.currentFrame = app.currentFrame - 1;
                 loadImages(app)
                 updatePlot(app)
                 updateImageDetails(app)
-                
             else
                 save(app)
                 message = sprintf('Start of images');
@@ -3022,8 +3215,14 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
         % Button pushed function: Next
         function NextPushed(app, event)
+            if app.isProspective
+                n_images = size(app.DRRs, 3);
+            else
+                n_images = length(app.Projections);
+            end
+            
             % Go to the next frame if possible
-            if app.currentFrame + 1 <= length(app.Projections)
+            if app.currentFrame + 1 <= n_images
                 save(app)
                 app.currentFrame = app.currentFrame + 1;
                 loadImages(app)
@@ -3040,9 +3239,15 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
         % Button pushed function: End
         function EndButtonPushed(app, event)
+            if app.isProspective
+                n_images = size(app.DRRs, 3);
+            else
+                n_images = length(app.Projections);
+            end
+
             % Go to the last frame
             save(app)
-            app.currentFrame = length(app.Projections);  
+            app.currentFrame = n_images;
             loadImages(app)
             updatePlot(app)
             updateImageDetails(app)
@@ -3177,6 +3382,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.contrastAutoButton.Value = 0;
             app.contrastContourButton.Value = 0;
             app.contrastROIButton.Value = 0;
+
+            % Working on DRR image if looking at prospective patients.
+            if app.isProspective
+                image = app.DRR;
+            else
+                image = app.projection;
+            end
             
             switch event.Source.Text
                 
@@ -3212,9 +3424,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     app.UpperSlider.Value = 1;
                     
                     
-                    app.ROIrange(1) = min(min(app.projection(ROI.Position(2):ROI.Position(2)+ROI.Position(4),...
+                    app.ROIrange(1) = min(min(image(ROI.Position(2):ROI.Position(2)+ROI.Position(4),...
                         ROI.Position(1):ROI.Position(1)+ROI.Position(3))));
-                    app.ROIrange(2) = max(max(app.projection(ROI.Position(2):ROI.Position(2)+ROI.Position(4),...
+                    app.ROIrange(2) = max(max(image(ROI.Position(2):ROI.Position(2)+ROI.Position(4),...
                         ROI.Position(1):ROI.Position(1)+ROI.Position(3))));
                     
                     delete(ROI)
@@ -3341,7 +3553,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.pointerManager.traverseFcn = @app.moveContour;
                 app.clickdragstatus.Text = 'ON';
                 app.clickdragstatus.FontColor = [0.31,0.80,0.00];
-            else
+                elsea
                 app.pointerManager.traverseFcn = [];
                 app.clickdragstatus.Text = 'OFF';
                 app.clickdragstatus.FontColor = [0.94,0.02,0.02];
@@ -3363,6 +3575,58 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Drop down opening function: FractionDropDown
         function FractionDropDownOpening(app, event)
             
+        end
+
+        % Value changed function: PatientDropDown
+        function patientSelected(app, event)
+            if app.mode == "selection"
+                app.paths.export = [app.paths.master, '\', app.folders.images, '\',app.PatientDropDown.Value];
+                app.StartAngleLabel.Visible = 'on';
+                app.StartAngleLamp.Visible = 'on';
+                app.StartAngleValue.Visible = 'on';
+                app.StopAngleLabel.Visible = 'on';
+                app.StopAngleLamp.Visible = 'on';
+                app.StopAngleValue.Visible = 'on';
+                [app.StartAngleLamp.Color, app.StopAngleLamp.Color] = deal([0.90,0.90,0.90]);
+            end
+            
+            % If the user selects a new patient from the dropdown, load the
+            % new list of fraction folders.
+            if ~strcmp(app.PatientDropDown.Value,'Select patient')
+            
+                fractions = dir([app.paths.master, '\', app.folders.images, '\' ,app.PatientDropDown.Value]);
+                fractions(strcmp({fractions.name}, "temp")) = [];
+                dirFlags = [fractions.isdir];
+                dirFlags(1:2) = 0;
+                fractions = fractions(dirFlags);
+                fractions = struct2cell(fractions);
+                app.FractionDropDown.Items = [{'Select fraction'},fractions(1,:)];  
+                app.FractionDropDown.Value = 'Select fraction'; 
+                
+                updateDICOMDir(app,0)
+                
+                app.FractionDropDown.Enable = 'on';
+                
+            else
+                app.CTLabel.Text = 'CT folder not selected';
+                app.CTLabel.FontColor = [1.00,0.41,0.16];
+                
+                app.PlanLabel.Text = 'Plan file not selected';
+                app.PlanLabel.FontColor = [1.00,0.41,0.16];
+                
+                app.StructureLabel.Text = 'Structure set file not selected';
+                app.StructureLabel.FontColor = [1.00,0.41,0.16];
+                app.SelectStructure.Visible = 'off';
+                
+                app.FractionDropDown.Items = {'Fraction'};
+                app.FractionDropDown.Enable = 'off';
+                
+            end
+            
+            app.ProjectionsLabel.Text = 'Intrafraction images folder not selected';
+            app.ProjectionsLabel.FontColor = [1.00,0.41,0.16];
+            [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
+            app.parametersWarning.Visible = 'off';
         end
     end
 
@@ -3901,7 +4165,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.parametersWarning.WordWrap = 'on';
             app.parametersWarning.FontColor = [1 0.4118 0.1608];
             app.parametersWarning.Visible = 'off';
-            app.parametersWarning.Position = [479 367 318 42];
+            app.parametersWarning.Position = [479 314 318 42];
             app.parametersWarning.Text = 'Warning: unable to determine the pixel spacing, SID, SDD, and x-offset. Confirm these values before proceeding.';
 
             % Create ImagingParametersPanel
@@ -3909,91 +4173,126 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.ImagingParametersPanel.AutoResizeChildren = 'off';
             app.ImagingParametersPanel.Title = 'Imaging Parameters';
             app.ImagingParametersPanel.FontWeight = 'bold';
-            app.ImagingParametersPanel.Position = [479 410 310 150];
+            app.ImagingParametersPanel.Position = [479 357 310 203];
 
             % Create SourcetoisocenterdistanceSIDmmEditFieldLabel
             app.SourcetoisocenterdistanceSIDmmEditFieldLabel = uilabel(app.ImagingParametersPanel);
-            app.SourcetoisocenterdistanceSIDmmEditFieldLabel.Position = [29 54 278 22];
+            app.SourcetoisocenterdistanceSIDmmEditFieldLabel.Position = [28 104 278 22];
             app.SourcetoisocenterdistanceSIDmmEditFieldLabel.Text = 'Source to isocenter distance (SID)                    mm';
 
             % Create SourcetodetectordistanceSDDmmLabel
             app.SourcetodetectordistanceSDDmmLabel = uilabel(app.ImagingParametersPanel);
-            app.SourcetodetectordistanceSDDmmLabel.Position = [29 29 278 22];
+            app.SourcetodetectordistanceSDDmmLabel.Position = [28 79 278 22];
             app.SourcetodetectordistanceSDDmmLabel.Text = 'Source to detector distance (SDD)                    mm';
 
             % Create DetectoroffsetxcoordinatemmLabel
             app.DetectoroffsetxcoordinatemmLabel = uilabel(app.ImagingParametersPanel);
-            app.DetectoroffsetxcoordinatemmLabel.Position = [29 4 276 22];
-            app.DetectoroffsetxcoordinatemmLabel.Text = 'Detector offset x-coordinate                              mm';
+            app.DetectoroffsetxcoordinatemmLabel.Position = [28 54 278 22];
+            app.DetectoroffsetxcoordinatemmLabel.Text = 'Detector offset x-coordinate                      l        mm';
 
             % Create offsetValue
             app.offsetValue = uieditfield(app.ImagingParametersPanel, 'numeric');
             app.offsetValue.HorizontalAlignment = 'center';
-            app.offsetValue.Position = [224 4 47 22];
+            app.offsetValue.Position = [223 54 47 22];
 
             % Create NumberofimagestoloadLabel
             app.NumberofimagestoloadLabel = uilabel(app.ImagingParametersPanel);
-            app.NumberofimagestoloadLabel.Position = [29 104 143 22];
+            app.NumberofimagestoloadLabel.Position = [29 157 143 22];
             app.NumberofimagestoloadLabel.Text = 'Number of images to load';
 
             % Create PixelspacingmmLabel
             app.PixelspacingmmLabel = uilabel(app.ImagingParametersPanel);
-            app.PixelspacingmmLabel.Position = [28 79 279 22];
+            app.PixelspacingmmLabel.Position = [27 129 279 22];
             app.PixelspacingmmLabel.Text = 'Pixel spacing                                                      mm';
 
             % Create offsetLamp
             app.offsetLamp = uilamp(app.ImagingParametersPanel);
-            app.offsetLamp.Position = [8 8 15 15];
+            app.offsetLamp.Position = [7 58 15 15];
             app.offsetLamp.Color = [0.902 0.902 0.902];
 
             % Create SDDvalue
             app.SDDvalue = uieditfield(app.ImagingParametersPanel, 'numeric');
             app.SDDvalue.Limits = [0 Inf];
             app.SDDvalue.HorizontalAlignment = 'center';
-            app.SDDvalue.Position = [224 29 47 22];
+            app.SDDvalue.Position = [223 79 47 22];
             app.SDDvalue.Value = 1500;
 
             % Create SDDLamp
             app.SDDLamp = uilamp(app.ImagingParametersPanel);
-            app.SDDLamp.Position = [8 33 15 15];
+            app.SDDLamp.Position = [7 83 15 15];
             app.SDDLamp.Color = [0.902 0.902 0.902];
 
             % Create SIDvalue
             app.SIDvalue = uieditfield(app.ImagingParametersPanel, 'numeric');
             app.SIDvalue.Limits = [0 Inf];
             app.SIDvalue.HorizontalAlignment = 'center';
-            app.SIDvalue.Position = [224 54 47 22];
+            app.SIDvalue.Position = [223 104 47 22];
             app.SIDvalue.Value = 1000;
 
             % Create SIDLamp
             app.SIDLamp = uilamp(app.ImagingParametersPanel);
-            app.SIDLamp.Position = [8 58 15 15];
+            app.SIDLamp.Position = [7 108 15 15];
             app.SIDLamp.Color = [0.902 0.902 0.902];
 
             % Create PixelSpacingValue
             app.PixelSpacingValue = uieditfield(app.ImagingParametersPanel, 'numeric');
             app.PixelSpacingValue.Limits = [0 Inf];
             app.PixelSpacingValue.HorizontalAlignment = 'center';
-            app.PixelSpacingValue.Position = [224 79 47 22];
+            app.PixelSpacingValue.Position = [223 129 47 22];
             app.PixelSpacingValue.Value = 0.388;
 
             % Create PixelSpacingLamp
             app.PixelSpacingLamp = uilamp(app.ImagingParametersPanel);
-            app.PixelSpacingLamp.Position = [8 83 15 15];
+            app.PixelSpacingLamp.Position = [7 133 15 15];
             app.PixelSpacingLamp.Color = [0.902 0.902 0.902];
 
             % Create AllCheckBox
             app.AllCheckBox = uicheckbox(app.ImagingParametersPanel);
             app.AllCheckBox.ValueChangedFcn = createCallbackFcn(app, @projectionsLoad, true);
             app.AllCheckBox.Text = 'All';
-            app.AllCheckBox.Position = [239 104 35 22];
+            app.AllCheckBox.Position = [239 157 35 22];
 
             % Create NumberProj
             app.NumberProj = uispinner(app.ImagingParametersPanel);
             app.NumberProj.Limits = [1 1000];
             app.NumberProj.HorizontalAlignment = 'left';
-            app.NumberProj.Position = [174 104 58 22];
+            app.NumberProj.Position = [174 157 58 22];
             app.NumberProj.Value = 35;
+
+            % Create StopAngleLabel
+            app.StopAngleLabel = uilabel(app.ImagingParametersPanel);
+            app.StopAngleLabel.Position = [27 4 274 22];
+            app.StopAngleLabel.Text = 'Stop angle                                           r              °   ';
+
+            % Create StopAngleValue
+            app.StopAngleValue = uieditfield(app.ImagingParametersPanel, 'numeric');
+            app.StopAngleValue.Limits = [0 360];
+            app.StopAngleValue.ValueDisplayFormat = '%.2f';
+            app.StopAngleValue.HorizontalAlignment = 'center';
+            app.StopAngleValue.Position = [223 4 47 22];
+            app.StopAngleValue.Value = 360;
+
+            % Create StopAngleLamp
+            app.StopAngleLamp = uilamp(app.ImagingParametersPanel);
+            app.StopAngleLamp.Position = [7 8 15 15];
+            app.StopAngleLamp.Color = [0.902 0.902 0.902];
+
+            % Create StartAngleLabel
+            app.StartAngleLabel = uilabel(app.ImagingParametersPanel);
+            app.StartAngleLabel.Position = [27 29 264 22];
+            app.StartAngleLabel.Text = 'Start angle                                                          °';
+
+            % Create StartAngleValue
+            app.StartAngleValue = uieditfield(app.ImagingParametersPanel, 'numeric');
+            app.StartAngleValue.Limits = [-360 360];
+            app.StartAngleValue.ValueDisplayFormat = '%.2f';
+            app.StartAngleValue.HorizontalAlignment = 'center';
+            app.StartAngleValue.Position = [223 29 47 22];
+
+            % Create StartAngleLamp
+            app.StartAngleLamp = uilamp(app.ImagingParametersPanel);
+            app.StartAngleLamp.Position = [7 33 15 15];
+            app.StartAngleLamp.Color = [0.902 0.902 0.902];
 
             % Create ExportLabel
             app.ExportLabel = uilabel(app.DataProcessingPanel);
@@ -4086,7 +4385,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Create PatientDropDown
             app.PatientDropDown = uidropdown(app.DataProcessingPanel);
             app.PatientDropDown.Items = {'Patient', ''};
-            app.PatientDropDown.ValueChangedFcn = createCallbackFcn(app, @refreshFractions, true);
+            app.PatientDropDown.ValueChangedFcn = createCallbackFcn(app, @patientSelected, true);
             app.PatientDropDown.Enable = 'off';
             app.PatientDropDown.FontSize = 15;
             app.PatientDropDown.FontWeight = 'bold';
@@ -4103,7 +4402,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.ImagingTypeDropDownLabel = uilabel(app.DataProcessingPanel);
             app.ImagingTypeDropDownLabel.Enable = 'off';
             app.ImagingTypeDropDownLabel.Visible = 'off';
-            app.ImagingTypeDropDownLabel.Position = [484 345 77 22];
+            app.ImagingTypeDropDownLabel.Position = [484 292 77 22];
             app.ImagingTypeDropDownLabel.Text = 'Imaging Type';
 
             % Create ImagingTypeDropDown
@@ -4111,7 +4410,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.ImagingTypeDropDown.Items = {'Kilovoltage', 'Megavoltage'};
             app.ImagingTypeDropDown.Enable = 'off';
             app.ImagingTypeDropDown.Visible = 'off';
-            app.ImagingTypeDropDown.Position = [630 345 97 22];
+            app.ImagingTypeDropDown.Position = [630 292 97 22];
             app.ImagingTypeDropDown.Value = 'Kilovoltage';
 
             % Show the figure after all components are created
