@@ -84,12 +84,12 @@
     </fileset.main>
     <fileset.resources>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\about.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\alignment-directories.ai</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\alignment-directories.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\arrows.ai</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\auto.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\contour.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\contrast.ai</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\directories.ai</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\directories.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\east.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\first.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon.ico</file>
@@ -115,6 +115,7 @@
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\previous.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\reset.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\ROI.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\selection-directories.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\south.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southeast.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southwest.png</file>
