@@ -10,7 +10,7 @@
 
 ---
 
-For the LEARN trial Patient Selection Tool see [this README](PatientSelectionTool/README.md).
+For the LEARN trial Patient Selection Tool see [this README](README-PST.md).
 
 ## Table of Contents
 
