@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
-  <configuration build-checksum="482206233" file="C:\GitHub\public\contour-alignment-tool\ContourAlignmentTool.prj" location="C:\GitHub\public\contour-alignment-tool" name="ContourAlignmentTool" preferred-package-location="C:\GitHub\contour-alignment-tool\ContourAlignmentTool\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
+  <configuration build-checksum="482206233" file="C:\Users\zxio0102\Documents\github\contour-alignment-tool\ContourAlignmentTool.prj" location="C:\Users\zxio0102\Documents\github\contour-alignment-tool" name="ContourAlignmentTool" preferred-package-location="C:\Users\zxio0102\Documents\github\contour-alignment-tool\ContourAlignmentTool\for_redistribution" preferred-package-type="package.type.exe" target="target.ezdeploy.standalone" target-name="Application Compiler">
     <param.appname>ContourAlignmentTool</param.appname>
     <param.icon>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon.ico</param.icon>
     <param.icons>
@@ -8,15 +8,15 @@
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_24.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_16.png</file>
     </param.icons>
-    <param.version>1.3</param.version>
-    <param.authnamewatermark>Adam Mylonas</param.authnamewatermark>
-    <param.email>adam.mylonas@sydney.edu.au</param.email>
-    <param.company>Image X Institute, University of Sydney</param.company>
+    <param.version>1.3.7</param.version>
+    <param.authnamewatermark />
+    <param.email />
+    <param.company />
     <param.summary>Contour visualisation and alignment tool</param.summary>
     <param.description />
     <param.screenshot>${PROJECT_ROOT}\ContourAlignmentTool_resources\splash.png</param.screenshot>
     <param.guid />
-    <param.installpath.string>\Image X Institute, University of Sydney\ContourAlignmentTool\</param.installpath.string>
+    <param.installpath.string>\ContourAlignmentTool\</param.installpath.string>
     <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
     <param.logo />
     <param.install.notes />
@@ -83,55 +83,68 @@
       <file>${PROJECT_ROOT}\ContourAlignmentTool.mlapp</file>
     </fileset.main>
     <fileset.resources>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\directories.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\east.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\north.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\northeast.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\northwest.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\south.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southeast.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southwest.png</file>
-      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\west.png</file>
-    </fileset.resources>
-    <fileset.package>
-      <file>${PROJECT_ROOT}\Dependencies</file>
-    </fileset.package>
-    <fileset.depfun>
-      <file>C:\GitHub\IGT\MATLABModules\Miscellaneous\mhaHeaderTemplate.mat</file>
-      <file>C:\GitHub\IGT\MATLABModules\Miscellaneous\uigetfilepath.m</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\about.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\alignment-directories.ai</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\alignment-directories.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\arrows.ai</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\auto.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\contour.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\contrast.ai</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\east.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\first.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon.ico</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_16.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_24.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_32.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\icon_48.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instruction-PatientPlanLoad.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-alignment.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-display.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-issue.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-loading.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions-saving.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\instructions.ai</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\last.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\manual.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\mhaHeaderTemplate.mat</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\navigation.ai</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\next.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\north.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\northeast.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\northwest.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\previous.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\reset.png</file>
       <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\ROI.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\selection-directories.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\south.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southeast.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\southwest.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\splash-large.psd</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\splash-small.psd</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\splash.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\The-X-small.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\The-X.png</file>
+      <file>${PROJECT_ROOT}\ContourAlignmentTool_resources\west.png</file>
       <file>${PROJECT_ROOT}\Supporting Apps\AboutSoftware.mlapp</file>
       <file>${PROJECT_ROOT}\Supporting Apps\CheckForUpdates.mlapp</file>
       <file>${PROJECT_ROOT}\Supporting Apps\DRRviewer.mlapp</file>
       <file>${PROJECT_ROOT}\Supporting Apps\Manual.mlapp</file>
-    </fileset.depfun>
+    </fileset.resources>
+    <fileset.package>
+      <file>${PROJECT_ROOT}\Dependencies</file>
+    </fileset.package>
+    <fileset.depfun />
     <build-deliverables>
-      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="ContourAlignmentTool.exe" optional="false">C:\GitHub\public\contour-alignment-tool\ContourAlignmentTool\for_testing\ContourAlignmentTool.exe</file>
-      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="readme.txt" optional="true">C:\GitHub\public\contour-alignment-tool\ContourAlignmentTool\for_testing\readme.txt</file>
-      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="splash.png" optional="false">C:\GitHub\public\contour-alignment-tool\ContourAlignmentTool\for_testing\splash.png</file>
+      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="splash.png" optional="false">C:\Users\zxio0102\Documents\github\contour-alignment-tool\ContourAlignmentTool\for_testing\splash.png</file>
+      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="ContourAlignmentTool.exe" optional="false">C:\Users\zxio0102\Documents\github\contour-alignment-tool\ContourAlignmentTool\for_testing\ContourAlignmentTool.exe</file>
+      <file location="${PROJECT_ROOT}\ContourAlignmentTool\for_testing" name="readme.txt" optional="true">C:\Users\zxio0102\Documents\github\contour-alignment-tool\ContourAlignmentTool\for_testing\readme.txt</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2021a</root>
+      <root>C:\Program Files\MATLAB\R2023b</root>
       <toolboxes>
         <toolbox name="matlabcoder" />
         <toolbox name="gpucoder" />
-        <toolbox name="neuralnetwork" />
       </toolboxes>
       <toolbox>
         <matlabcoder>
@@ -142,11 +155,6 @@
         <gpucoder>
           <enabled>true</enabled>
         </gpucoder>
-      </toolbox>
-      <toolbox>
-        <neuralnetwork>
-          <enabled>true</enabled>
-        </neuralnetwork>
       </toolbox>
     </matlab>
     <platform>
