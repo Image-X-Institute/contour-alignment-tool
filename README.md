@@ -8,23 +8,33 @@
 
 </div>
 
+For the LEARN trial Patient Selection Tool see [this README](PatientSelectionTool/README.md).
+
 ---
 
 ## Table of Contents
 
-- [About](#about)
-- [Getting Started](#getting-started)
-  - [System Requirements and Prerequisites](#system-requirements-and-prerequisites)
-  - [Installation](#installation)
-  - [Data](#data)
-- [Usage](#usage)
-  - [Loading Data](#loading-data)
-  - [Contour Alignment](#contour-alignment)
-  - [Display](#display)
-  - [Data Export](#data-export)
-- [Build](#build)
-- [Acknowledgments](#acknowledgments)
-- [Contact](#contact)
+- [Contour Alignment Tool](#contour-alignment-tool)
+  - [Table of Contents](#table-of-contents)
+  - [About](#about)
+    - [Key Features:](#key-features)
+  - [Getting Started](#getting-started)
+    - [System Requirements and Prerequisites](#system-requirements-and-prerequisites)
+    - [Installation](#installation)
+    - [Data](#data)
+  - [Usage](#usage)
+    - [Loading Data](#loading-data)
+    - [Contour Alignment](#contour-alignment)
+      - [Navigation](#navigation)
+      - [Moving Contours](#moving-contours)
+      - [Confidence Selection](#confidence-selection)
+    - [Display Options](#display-options)
+      - [Contrast Adjustment](#contrast-adjustment)
+    - [Data Export](#data-export)
+  - [Build](#build)
+    - [Supporting Files](#supporting-files)
+  - [Acknowledgments](#acknowledgments)
+  - [Contact](#contact)
 
 ---
 
