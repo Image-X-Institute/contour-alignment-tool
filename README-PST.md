@@ -40,7 +40,7 @@ The **Contour Alignment Tool** is a MATLAB-based application designed for identi
 - Visualise 2D contours generated from 3D structures.
 - Supports a wide range of 2D projection formats.
 
-![Tool Interface](https://github.com/Image-X-Institute/contour-alignment-tool/assets/63682590/c008bb15-f33d-45a2-8128-b81f123d3a53)
+![Tool Interface](ContourAlignmentTool_resources/selection-interface.png)
 
 ---
 
