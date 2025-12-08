@@ -49,7 +49,7 @@ The **Contour Alignment Tool** is a MATLAB-based application designed for identi
 ### System Requirements and Prerequisites
 
 - **OS**: Windows
-- **MATLAB Runtime**: Version 25.2 (2025b)
+- **MATLAB Runtime**: Version 23.2 (2023b)
   [Download MATLAB Runtime](https://au.mathworks.com/products/compiler/matlab-runtime.html)
 
 ---
