@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<Info>
-    <Category UUID="Deployment_Category_c6064b30-71dd-4d69-bfaa-07974c2c0ddd">
-        <Label UUID="Deployment_ExeIconFile_c6064b30-71dd-4d69-bfaa-07974c2c0ddd"/>
-    </Category>
-    <Category UUID="Deployment_Category_caf31781-8b15-4857-a255-98f850f86ed5">
-        <Label UUID="Deployment_ExeIconFile_caf31781-8b15-4857-a255-98f850f86ed5"/>
-    </Category>
-</Info>
