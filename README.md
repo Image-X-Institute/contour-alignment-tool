@@ -66,7 +66,7 @@ The **Contour Alignment Tool** is a MATLAB-based application designed for aligni
 ### Installation
 
 1. Download the latest release:  
-   [ContourAlignmentTool v1.3.7](https://github.com/Image-X-Institute/contour-alignment-tool/releases/download/v1.3.7/ContourAlignmentTool.v1.3.7.zip)
+   [ContourAlignmentTool v1.3.7]([https://github.com/Image-X-Institute/contour-alignment-tool/releases/download/v1.3.7/ContourAlignmentTool.v1.3.7.zip](https://github.com/Image-X-Institute/contour-alignment-tool/releases/download/v1.3.7/app.zip))
 2. Extract contents to a local directory.
 
 ---
