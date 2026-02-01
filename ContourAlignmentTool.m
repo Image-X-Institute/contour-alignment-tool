@@ -47,8 +47,15 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         ExportBrowse                  matlab.ui.control.Button
         ExportLabel                   matlab.ui.control.Label
         kVImagingParametersPanel      matlab.ui.container.Panel
-        CollimatorcassetteDropDown    matlab.ui.control.DropDown
-        CollimatorcassetteDropDownLabel  matlab.ui.control.Label
+        CollimatorCassetteDropDownLabel  matlab.ui.control.Label
+        MachineDropDown               matlab.ui.control.DropDown
+        MachineDropDownLamp           matlab.ui.control.Lamp
+        MachineDropDownLabel          matlab.ui.control.Label
+        MatrixSizeDropDown            matlab.ui.control.DropDown
+        MatrixSizeLamp                matlab.ui.control.Lamp
+        MatrixSizeLabel               matlab.ui.control.Label
+        CollimatorCassetteDropDown    matlab.ui.control.DropDown
+        Label                         matlab.ui.control.Label
         StartAngleLamp                matlab.ui.control.Lamp
         StartAngleValue               matlab.ui.control.NumericEditField
         StartAngleLabel               matlab.ui.control.Label
@@ -167,7 +174,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
     properties (Access = public)
         % This is now set in file "mode.txt" added by the deploy script.
         mode; % This switches between "Contour Alignment Tool" and "Patient Selection Tool".
-        marginPx; % The margin in pixels.
+        marginX; % The margin in pixels.
+        marginY;
 
         % Images
         originalMasks
@@ -177,7 +185,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         dispContour = 1;
         
         % Parameters
-        imageSize
         fileType
         currentFrame
         colour   
@@ -778,8 +785,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
             %% Read header
             fid = fopen(filename,'r');
-            disp('loading xim')
-            disp(filename)
             
             % Decode header
             info.file_name = filename;
@@ -790,9 +795,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             info.bits_per_pixel = fread(fid,1,'*int32');
             info.bytes_per_pixel = fread(fid,1,'*int32');
             info.compression_indicator = fread(fid,1,'*int32');
-
-            disp('bytes per pixel')
-            disp(num2str(info.bytes_per_pixel))
             
             %% Read image
             if nargout < 2
@@ -803,14 +805,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
             % Decode pixel data
             if info.compression_indicator == 1
-                disp('loading compressed xim')
                 lookup_table_size = fread(fid,1,'int32');    
                 lookup_table = fread(fid,lookup_table_size*4,'ubit2=>uint8');
                 compressed_pixel_buffer_size = fread(fid,1,'int32');
                 if read_pixel_data==1
                     disp('reading pixel data')
                     % Decompress image
-                    % This uses variable-length, differential compression as neighbouring
+                    % BC: This uses variable-length, differential compression as neighbouring
                     % pixels are assumed to have similar intensity values.
                     pixel_data = int32(zeros(info.image_width*info.image_height,1));
                     pixel_data(1:info.image_width+1) = fread(fid,info.image_width+1,'*int32');
@@ -838,7 +839,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                         end
                     else
 
-                        % This didn't work for all patients -
+                        % BC: This didn't work for all patients -
                         % issue for Prostate/Pat02/Fx2
 
                         % New lookup table stuff.
@@ -910,7 +911,15 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     disp('read')
                     info.pixel_data = reshape(pixel_data,info.image_width,info.image_height);
                 else
-                    fseek(fid,uncompressed_pixel_buffer_size,'cof');
+                    % fseek(fid,uncompressed_pixel_buffer_size,'cof');
+                    switch info.bytes_per_pixel
+                        case 1
+                            fseek(fid, uncompressed_pixel_buffer_size, 'cof');
+                        case 2
+                            fseek(fid, uncompressed_pixel_buffer_size/2, 'cof');
+                        otherwise
+                            fseek(fid, uncompressed_pixel_buffer_size/4, 'cof');
+                    end
                 end
             end
             
@@ -920,8 +929,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 info.histogram.number_of_bins_in_histogram=number_of_bins_in_histogram;
                 info.histogram.histogram_data = fread(fid,number_of_bins_in_histogram,'*int32');
             end
-
-            disp('hist stuff')
             
             % Decode properties
             number_of_properties = fread(fid,1,'*int32');
@@ -954,8 +961,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 end
                 info.properties=setfield(info.properties,property_name,property_value);
             end
-
-            disp('properties stuff')
             
             if nargout > 1
                 M = info.pixel_data;
@@ -1235,6 +1240,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         
         % Search the selected folder for projection files. 
         function updateProjectionsDir(app, browse)
+            % BC: This function updates the kv imaging parameters based on the contents
+            % of the projection files.
             
             % Reset the projections list variable
             app.Projections = {};
@@ -1291,12 +1298,18 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Determine parameters from the file headers
             if any(size(dir([app.paths.projections '/*.tiff' ]),1))
                 app.fileType = '.tiff';
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
+                [app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
                 [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([1.00,0.41,0.16]);
                 app.parametersWarning.Text = 'Warning: unable to determine the pixel spacing, SID, SDD, and x-offset. Confirm these values before proceeding.';
                 app.parametersWarning.Visible = 'on';
                 
             elseif any(size(dir([app.paths.projections '/*.xim' ]),1))
                 app.fileType = '.xim';
+                app.MachineDropDown.Value = "Varian";
+                app.CollimatorCassetteDropDown.Visible = 'off';
+                app.CollimatorCassetteDropDownLabel.Visible = 'off';
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
                 files = dir([app.paths.projections '/*.xim' ]);
                 info = XimReader(app,fullfile(app.paths.projections,files(1).name));
                 
@@ -1313,10 +1326,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 end
                 
                 app.PixelSpacingValue.Value = info.properties.PixelHeight*10;
-                [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.31,0.80,0.00]);
+                [app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color, app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.31,0.80,0.00]);
                 
             elseif any(size(dir([app.paths.projections '/*.hnc' ]),1))
                 app.fileType = '.hnc';
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
+                [app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
                 files = dir([app.paths.projections '/*.hnc' ]);
                 [info, ~] = HncReader(app,fullfile(app.paths.projections,files(1).name));
                 app.PixelSpacingValue.Value = info.dImageResolutionX*10;
@@ -1327,12 +1342,19 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 
             elseif any(size(dir([app.paths.projections '/*.hnd' ]),1))
                 app.fileType = '.hnd';
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
+                [app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
                 [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([1.00,0.41,0.16]);
                 app.parametersWarning.Text = 'Warning: unable to determine the pixel spacing, SID, SDD, and x-offset. Confirm these values before proceeding.';
                 app.parametersWarning.Visible = 'on';
                 
             elseif any(size(dir([app.paths.projections '/*.his' ]),1))
                 app.fileType = '.his';
+                app.MachineDropDown.Value = "Elekta";
+                app.CollimatorCassetteDropDown.Visible = 'on';
+                app.CollimatorCassetteDropDown.Visible = 'on';
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [512 512]); 
+                [app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
                 app.paths.frames = [app.paths.projections,'/_Frames.xml'];
                 files = dir([app.paths.projections '/*.his' ]);
                 [info, ~] = HisReader(app,fullfile(app.paths.projections,files(1).name));
@@ -1358,6 +1380,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 filePath = fullfile(dcmFiles(1).folder, dcmFiles(1).name);
                 
                 info = dicominfo(filePath);
+                            
+                % --- Matrix size ---
+                if isfield(info, 'Rows') && isfield(info, 'Columns')
+                    app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [info.Rows, info.Columns]);
+                else
+                    app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]);  % fallback
+                end
 
                 % --- Pixel Spacing ---
                 if isfield(info, 'ImagePlanePixelSpacing')
@@ -1391,11 +1420,23 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             else
                 app.ProjectionsLabel.Text = 'No intrafraction images detected';
                 app.ProjectionsLabel.FontColor = [1.00,0.41,0.16];
-                [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]);
+                [app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
+                [app.MachineDropDownLabel.Color, app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
                 app.parametersWarning.Visible = 'off';
                 allFilesSelected(app)
 
+                % No projections were found. The app remains in prospective selection mode.
+                if app.mode == "selection"
+                    app.isRetro = false;
+                end
+
                 return % exit if no projection files found
+            end
+
+            % Projections have been located, we're performing retrospective patient selection.
+            if app.mode == "selection"
+                app.isRetro = true;
             end
             
             % Update dialogue box
@@ -1847,8 +1888,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 % end
                 % 
                 % windowposition(2) = s.BoundingBox(2)+s.BoundingBox(4)+windowsize/2;
-                % if windowposition(2) > app.imageSize(1)
-                %     windowposition(2) = app.imageSize(1);
+                % matrixSize = str2num(app.MatrixSizeDropDown.Value);
+                % if windowposition(2) > matrixSize(1)
+                %     windowposition(2) = matrixSize(1);
                 % end
                 % 
                 % windowposition(3) = s.BoundingBox(1)-windowsize/2;
@@ -1857,8 +1899,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 % end
                 % 
                 % windowposition(4) =  s.BoundingBox(1)+s.BoundingBox(3)+windowsize/2;
-                % if windowposition(4) > app.imageSize(2)
-                %     windowposition(4) = app.imageSize(2);
+                % if windowposition(4) > matrixSize(2)
+                %     windowposition(4) = matrixSize(2);
                 % end
                 % 
                 % lower = min(min(app.projection(windowposition(1):windowposition(2),...
@@ -1890,11 +1932,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
 
             % Set the width of the projection display
-            if app.UIAxes.Position(3)/app.UIAxes.Position(4) <= app.imageSize(2)/app.imageSize(1)
+            matrixSize = str2num(app.MatrixSizeDropDown.Value);
+            if app.UIAxes.Position(3)/app.UIAxes.Position(4) <= matrixSize(2)/matrixSize(1)
                 app.displaySize(1) = app.UIAxes.Position(3);
-                app.displaySize(2) = app.UIAxes.Position(3)/(app.imageSize(2)/app.imageSize(1));
+                app.displaySize(2) = app.UIAxes.Position(3)/(matrixSize(2)/matrixSize(1));
             else
-                app.displaySize(1) = app.UIAxes.Position(4)*(app.imageSize(2)/app.imageSize(1));
+                app.displaySize(1) = app.UIAxes.Position(4)*(matrixSize(2)/matrixSize(1));
                 app.displaySize(2) = app.UIAxes.Position(4);
             end
             
@@ -1908,8 +1951,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 hold(app.UIAxes, 'on');
                 [h, w, ~] = size(image);
                 % Map margin from pixels to display.
-                marginX = app.marginPx * app.displaySize(1) / w;
-                marginY = app.marginPx * app.displaySize(2) / h;
+                marginX = app.marginX * app.displaySize(1) / w;
+                marginY = app.marginY * app.displaySize(2) / h;
                 rectangle(app.UIAxes, ...
                     'Position', [marginX, marginY, app.displaySize(1) - 2 * marginX, app.displaySize(2) - 2 * marginY], ...
                     'EdgeColor', 'yellow', ...
@@ -1930,7 +1973,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Update the contour centroid location
             if app.mode == "alignment"
                 s = regionprops(double(app.Mask),'centroid');
-                app.position.Text = sprintf('(%.0f, %.0f)',s.Centroid(1),app.imageSize(1) - s.Centroid(2));  
+                app.position.Text = sprintf('(%.0f, %.0f)',s.Centroid(1),matrixSize(1) - s.Centroid(2));  
             end
         end
         
@@ -2076,8 +2119,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
             % Calculate the difference between the pointer position and the
             % centroid
-            xdifference = round((app.UIAxes.CurrentPoint(1,1)/app.displaySize(1)*app.imageSize(2)) - mean(centroids(:,1)));
-            ydifference = round((app.UIAxes.CurrentPoint(1,2)/app.displaySize(2)*app.imageSize(1)) - mean(centroids(:,2)));
+            matrixSize = str2num(app.MatrixSizeDropDown.Value);
+            xdifference = round((app.UIAxes.CurrentPoint(1,1)/app.displaySize(1)*matrixSize(2)) - mean(centroids(:,1)));
+            ydifference = round((app.UIAxes.CurrentPoint(1,2)/app.displaySize(2)*matrixSize(1)) - mean(centroids(:,2)));
             
             % Move contour up
             if ydifference < 0
@@ -2213,8 +2257,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     s2 = regionprops(double(imbinarize(permute(app.originalMasks(:,:,k1),[2 1 3]),0)),'centroid');
                 end                                
                 
-                s1.Centroid(2) = app.imageSize(1)-s1.Centroid(2);
-                s2.Centroid(2) = app.imageSize(1)-s2.Centroid(2);
+                matrixSize = str2num(app.MatrixSizeDropDown.Value);
+                s1.Centroid(2) = matrixSize(1)-s1.Centroid(2);
+                s2.Centroid(2) = matrixSize(1)-s2.Centroid(2);
                 diff= (s1.Centroid-s2.Centroid)*isoSize;
                 fprintf(file, '%s,%.4f,%.4f\n', name(1:k(end)-1),diff(1),diff(2));
             end  
@@ -2241,6 +2286,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
         % Reset all variables for a new session.
         function newSession(app,type)
+        % BC: Runs when user selects new fraction/patient.
             % Reset to prospective patient.
             if app.mode == "selection"
                 app.isRetro = false;
@@ -2361,9 +2407,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.StructureLabel.Tooltip = '';
             end
             
-            [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
+            [app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color, app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color,app.StartAngleLamp.Color, app.StopAngleLamp.Color] = deal([0.90,0.90,0.90]);
             if app.mode == "selection" && type == 2
-                % Clear out start/stop angle but only if new patient.
+                % BC: Don't clear out start/stop angle for new fraction - as the plan is still loaded
+                % and this is where start/stop angles come from.
                 [app.StartAngleLamp.Color, app.StopAngleLamp.Color] = deal([0.90,0.90,0.90]);
             end
             app.parametersWarning.Visible = 'off';
@@ -2436,6 +2483,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
             % Change "image parameters" based on mode.
             if app.mode == "alignment"
+                app.MachineDropDown.Visible = 'off';
+                app.MachineDropDownLabel.Visible = 'off';
+                app.MachineDropDownLamp.Visible = 'off';
                 app.StartAngleLabel.Visible = 'off';
                 app.StartAngleLamp.Visible = 'off';
                 app.StartAngleValue.Visible = 'off';
@@ -2443,6 +2493,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.StopAngleLamp.Visible = 'off';
                 app.StopAngleValue.Visible = 'off';
             end
+            % Defaults to "Varian", which doesn't have collimator cassettes.
+            app.CollimatorCassetteDropDown.Visible = 'off';
+            app.CollimatorCassetteDropDownLabel.Visible = 'off';
 
             % Change the navigation panel items.
             if app.mode == "alignment"
@@ -2644,36 +2697,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % end
         end
 
-        % Value changed function: FractionDropDown
+        % Callback function
         function fractionSelected(app, event)
-            % Determine if prospective or retrospective selection.
-            if app.mode == "selection"
-                if app.FractionDropDown.Value == "Select fraction"
-                    disp('setting pros')
-                    app.isRetro = false;
-
-                    % Show start/stop angles.
-                    app.StartAngleLabel.Visible = 'on';
-                    app.StartAngleLamp.Visible = 'on';
-                    app.StartAngleValue.Visible = 'on';
-                    app.StopAngleLabel.Visible = 'on';
-                    app.StopAngleLamp.Visible = 'on';
-                    app.StopAngleValue.Visible = 'on';
-                else
-                    app.isRetro = true;
-                    disp("setting retro")
-
-                    % Hide start/stop angles.
-                    app.StartAngleLabel.Visible = 'off';
-                    app.StartAngleLamp.Visible = 'off';
-                    app.StartAngleValue.Visible = 'off';
-                    app.StopAngleLabel.Visible = 'off';
-                    app.StopAngleLamp.Visible = 'off';
-                    app.StopAngleValue.Visible = 'off';
-                end
-            end
-            
-            updateProjectionsDir(app,0)
+          
         end
 
         % Button pushed function: CTBrowse
@@ -2849,7 +2875,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
         % Button pushed function: StartProcessing
         function StartProcessingButtonPushed(app, event)
-
+        % BC: This function creates the DRRs.
             try
 
                 % Disable all of the user selection buttons
@@ -2931,72 +2957,62 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                             endIndex = find(filename == '.');
                             projectionAngle = str2double(filename(number_index(3)+1 : endIndex(2)-1));
                             projectionAngle = projectionAngle + 90 + offset;
-                            app.imageSize = [768 1024];
                         
                         elseif strcmp(app.fileType,'.xim')
                             info = XimReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
                             projectionAngle = info.properties.GantryRtn + 90 - offset; 
                             % BC: Varian TrueBeam detector panel size. Would need to be updated for HyperSight 
-                            % with a larger imaging panel. 
-                            app.imageSize = [768 1024];
+                            % with a larger imaging panel.
+                            disp(projectionAngle);
+                            disp([info.properties.KVCollimatorX1, info.properties.KVCollimatorX2, info.properties.KVCollimatorY1, info.properties.KVCollimatorY2]);
                             
                         elseif strcmp(app.fileType,'.hnc') 
                             info = HncReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
                             projectionAngle = info.dCBCTPositiveAngle - 90 - offset; 
-                            app.imageSize = [768 1024];
                             
                         elseif strcmp(app.fileType,'.hnd') 
                             info = HndReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
                             projectionAngle = info.dCBCTPositiveAngle - 90 - offset; 
-                            app.imageSize = [768 1024];
                             
                         elseif strcmp(app.fileType,'.his') 
                             projectionAngle = updatedFrames(i) - 90 - offset;
-                            app.imageSize = [512 512];
                             app.offsetValue.Value = -1*app.offsetValue.Value;
                         
                         elseif strcmp(app.fileType, '.dcm')
-                        [~, baseName, ~] = fileparts(app.Projections(i).name);
-                        headerName = [baseName, '_header.mat'];
-                        headerPath = fullfile(app.Projections(i).folder, headerName);
-                        
-                        % Load DICOM header
-                        headerData = load(headerPath, 'info');
-                        info = headerData.info;
-                        
-                        % Extract frame index from filename (e.g., 'frame03.mat')
-                        frameIndex = 1;
-                        frameMatch = regexp(app.Projections(i).name, 'frame(\d+)\.mat', 'tokens');
-                        if ~isempty(frameMatch)
-                            frameIndex = str2double(frameMatch{1}{1});
-                        end
-                        
-                        % Try to get GantryAngle from ExposureSequence (named fields like Item_3)
-                        gantryAngle = NaN;
-                        if isfield(info, 'ExposureSequence')
-                            itemName = sprintf('Item_%d', frameIndex);
-                            if isfield(info.ExposureSequence, itemName)
-                                exposure = info.ExposureSequence.(itemName);
-                                if isfield(exposure, 'GantryAngle')
-                                    gantryAngle = exposure.GantryAngle;
+                            [~, baseName, ~] = fileparts(app.Projections(i).name);
+                            headerName = [baseName, '_header.mat'];
+                            headerPath = fullfile(app.Projections(i).folder, headerName);
+                            
+                            % Load DICOM header
+                            headerData = load(headerPath, 'info');
+                            info = headerData.info;
+                            
+                            % Extract frame index from filename (e.g., 'frame03.mat')
+                            frameIndex = 1;
+                            frameMatch = regexp(app.Projections(i).name, 'frame(\d+)\.mat', 'tokens');
+                            if ~isempty(frameMatch)
+                                frameIndex = str2double(frameMatch{1}{1});
+                            end
+                            
+                            % Try to get GantryAngle from ExposureSequence (named fields like Item_3)
+                            gantryAngle = NaN;
+                            if isfield(info, 'ExposureSequence')
+                                itemName = sprintf('Item_%d', frameIndex);
+                                if isfield(info.ExposureSequence, itemName)
+                                    exposure = info.ExposureSequence.(itemName);
+                                    if isfield(exposure, 'GantryAngle')
+                                        gantryAngle = exposure.GantryAngle;
+                                    end
                                 end
                             end
-                        end
-                        
-                        % Fallback to global GantryAngle if per-frame not found
-                        if isnan(gantryAngle) && isfield(info, 'GantryAngle')
-                            gantryAngle = info.GantryAngle;
-                        end
-                        
-                        % Final projection angle
-                        projectionAngle = gantryAngle + 90 - offset;
-                        
-                        % Set image size
-                        if isfield(info, 'Rows') && isfield(info, 'Columns')
-                            app.imageSize = [info.Rows, info.Columns];
-                        else
-                            app.imageSize = [768 1024];  % fallback
-                        end
+                            
+                            % Fallback to global GantryAngle if per-frame not found
+                            if isnan(gantryAngle) && isfield(info, 'GantryAngle')
+                                gantryAngle = info.GantryAngle;
+                            end
+                            
+                            % Final projection angle
+                            projectionAngle = gantryAngle + 90 - offset;
                         end
     
                         % Change angles to be between 0 and 360
@@ -3030,7 +3046,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     end
 
                     % Set image size - this is typically obtained from the kV images.
-                    app.imageSize = [768 1024];
+                    % app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]);
+
                 end
                 
                 fclose(file);
@@ -3157,35 +3174,42 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 dep_path = [project_path, '\Dependencies'];
                 fprintf(logfile, "Dep path: %s\n", dep_path);
                 fprintf(logfile, "Temp path: %s\n", app.paths.temp);
-                system([dep_path, '\geometry',cuda,' ',...
+                cmd = [dep_path, '\geometry',cuda,' ',...
                     '-i "',fullfile(app.paths.temp,'ProjectionAngles.csv"'),' ',...
                     '--sid ', num2str(app.SIDvalue.Value),' ',...
                     '--sdd ', num2str(app.SDDvalue.Value),' ',...
                     '--proj_iso_x ', num2str(app.offsetValue.Value),' ',...
-                    '-o "',fullfile(app.paths.temp,'Geometry.xml"')]);
+                    '-o "',fullfile(app.paths.temp,'Geometry.xml"')];
+                disp(cmd);
+                system(cmd);
                 
                 d.Value = 0.5; 
                 d.Message = 'Generating the CT forward projections';
                 
                 % Generate the forward projections
-                system([dep_path, '\forwardprojections',cuda,' ',...
+                matrixSize = str2num(app.MatrixSizeDropDown.Value);
+                cmd = [dep_path, '\forwardprojections',cuda,' ',...
                    '-i "',fullfile(app.paths.temp,'CT.mha"'),' ',...
                    '-o "',fullfile(app.paths.temp,'CT_FP.mha"'),' ',...
                    '-g "',fullfile(app.paths.temp,'Geometry.xml"'),' ',...
                    '--fp ',fp,' ',...
-                   '--dimension ',num2str(app.imageSize(2)),',',num2str(app.imageSize(1)),' ',...
-                   '--spacing ', num2str(app.PixelSpacingValue.Value)]); 
+                   '--dimension ',num2str(matrixSize(2)),',',num2str(matrixSize(1)),' ',...
+                   '--spacing ', num2str(app.PixelSpacingValue.Value)];
+                disp(cmd)
+                system(cmd); 
                 
                 d.Value = 0.7; 
                 d.Message = 'Generating the structure forward projections';
                 
-                system([dep_path, '\forwardprojections',cuda,' ',...
+                cmd = [dep_path, '\forwardprojections',cuda,' ',...
                     '-i "',fullfile(app.paths.temp,'ROI.mha"'),' ',...
                    '-o "',fullfile(app.paths.temp,'ROI_FP.mha"'),' ',...
                    '-g "',fullfile(app.paths.temp,'Geometry.xml"'),' ',...
                    '--fp ',fp,' ',...
-                   '--dimension ',num2str(app.imageSize(2)),',',num2str(app.imageSize(1)),' ',...
-                   '--spacing ', num2str(app.PixelSpacingValue.Value)]);
+                   '--dimension ',num2str(matrixSize(2)),',',num2str(matrixSize(1)),' ',...
+                   '--spacing ', num2str(app.PixelSpacingValue.Value)];
+                disp(cmd);
+                system(cmd);
     
                 d.Value = 0.9; 
                 d.Message = 'Initialising...';
@@ -3194,17 +3218,17 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 %% Load the images
                 app.currentFrame = 1;
                 if app.RedMenu.Checked
-                    app.colour = cat(3, ones(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
                 elseif app.OrangeMenu.Checked
-                    app.colour = cat(3, ones(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2))*0.5, zeros(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2))*0.5, zeros(matrixSize(1),matrixSize(2)));
                 elseif app.YellowMenu.Checked
-                    app.colour = cat(3, ones(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
                 elseif app.GreenMenu.Checked
-                    app.colour = cat(3, zeros(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
                 elseif app.BlueMenu.Checked
-                    app.colour = cat(3, zeros(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, zeros(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)));
                 elseif app.PurpleMenu.Checked
-                    app.colour = cat(3, ones(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)));
                 end
      
                 if app.mode == "alignment" || app.isRetro
@@ -3216,7 +3240,51 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.originalMasks = app.Masks;
 
                 if app.mode == "selection"
-                    app.marginPx = floor(app.margin / app.PixelSpacingValue.Value);
+                    % Crop the DRRs/Masks if collimator is selected.
+                    matrixSize = str2num(app.MatrixSizeDropDown.Value);
+                    xMatrixSize = matrixSize(2);
+                    yMatrixSize = matrixSize(1);
+                    pixelSpacing = app.PixelSpacingValue.Value;
+                    ccSizeMM = str2num(app.CollimatorCassetteDropDown.Value);
+                    if ~isempty(ccSizeMM)
+                        ccSize = floor(ccSizeMM / pixelSpacing);
+                        xCcSize = ccSize(1);
+                        yCcSize = ccSize(2);
+                        if xCcSize > xMatrixSize
+                            xCcSize = xMatrixSize;
+                        end
+                        if yCcSize > yMatrixSize
+                            yCcSize = yMatrixSize;
+                        end
+                        % Collimator cassettes are (W, L) with W=x, L=y.
+                        % Remove x/yCrop from both sides.
+                        xCrop = floor((xMatrixSize - xCcSize) / 2);
+                        yCrop = floor((yMatrixSize - yCcSize) / 2);
+                        if xCrop < 0
+                            xCrop = 0;
+                        end
+                        if yCrop < 0
+                            yCrop = 0;
+                        end
+                        % app.DRRs = app.DRRs(xCrop + 1:xCrop + xCcSize, yCrop + 1:yCrop + yCcSize, :);
+                        % app.Masks = app.Masks(xCrop + 1:xCrop + xCcSize, yCrop + 1:yCrop + yCcSize, :);
+
+                        % Darken the cropped voxels, don't remove.
+                        cropMask = false(xMatrixSize, yMatrixSize);
+                        cropMask(xCrop + 1:xCrop + xCcSize, yCrop + 1:yCrop + yCcSize) = true;
+                        
+                        % Apply mask to all slices
+                        app.DRRs = app.DRRs .* cropMask;
+                        app.Masks = app.Masks .* cropMask;
+                    else
+                        xCrop = 0;
+                        yCrop = 0;
+                    end
+
+
+                    % Add 10mm margin - plus collimated crop.
+                    app.marginX = floor(app.margin / app.PixelSpacingValue.Value) + xCrop;
+                    app.marginY = floor(app.margin / app.PixelSpacingValue.Value) + yCrop;
 
                     % Check how many masks are missing or cropped (with a 10mm crop applied to the image).
                     nMasks = size(app.Masks, 3);
@@ -3228,7 +3296,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                             continue;
                         else
                             % Crop mask by margin.
-                            mask = mask(app.marginPx:end - app.marginPx + 1, app.marginPx:end - app.marginPx + 1);
+                            mask = mask(app.marginX:end - app.marginX + 1, app.marginY:end - app.marginY + 1);
         
                             % Check for foreground edge voxels.
                             maskHasBorderPixels = ...
@@ -3555,10 +3623,11 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     app.ROIselectionLabel.Visible = 'on';
                     
                     ROI = drawrectangle(app.UIAxes);
-                    ROI.Position(1) = round(ROI.Position(1)/app.displaySize(1)*app.imageSize(2));
-                    ROI.Position(3) = round(ROI.Position(3)/app.displaySize(1)*app.imageSize(2));
-                    ROI.Position(2) = round(ROI.Position(2)/app.displaySize(2)*app.imageSize(1));
-                    ROI.Position(4) = round(ROI.Position(4)/app.displaySize(2)*app.imageSize(1));
+                    matrixSize = str2num(app.MatrixSizeDropDown.Value);
+                    ROI.Position(1) = round(ROI.Position(1)/app.displaySize(1)*matrixSize(2));
+                    ROI.Position(3) = round(ROI.Position(3)/app.displaySize(1)*matrixSize(2));
+                    ROI.Position(2) = round(ROI.Position(2)/app.displaySize(2)*matrixSize(1));
+                    ROI.Position(4) = round(ROI.Position(4)/app.displaySize(2)*matrixSize(1));
                      
                     
                     app.LowerSlider.Value = 0;
@@ -3586,36 +3655,37 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % ...and 3 other components
         function ContourColourSelection(app, event)
             % Change the contour colour
+            matrixSize = str2num(app.MatrixSizeDropDown.Value);
             switch event.Source.Text
                 case 'Red'
                     app.RedMenu.Checked = 1;
                     [app.OrangeMenu.Checked,app.YellowMenu.Checked,app.GreenMenu.Checked,app.BlueMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, ones(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
                     
                 case 'Orange'
                     app.OrangeMenu.Checked = 1;
                     [app.RedMenu.Checked,app.YellowMenu.Checked,app.GreenMenu.Checked,app.BlueMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, ones(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2))*0.5, zeros(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2))*0.5, zeros(matrixSize(1),matrixSize(2)));
                     
                 case 'Yellow'
                     app.YellowMenu.Checked = 1;
                     [app.RedMenu.Checked,app.OrangeMenu.Checked,app.GreenMenu.Checked,app.BlueMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, ones(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
                     
                 case 'Green'
                     app.GreenMenu.Checked = 1;
                     [app.RedMenu.Checked,app.OrangeMenu.Checked,app.YellowMenu.Checked,app.BlueMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, zeros(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
                     
                 case 'Blue'
                     app.BlueMenu.Checked = 1;
                     [app.RedMenu.Checked,app.OrangeMenu.Checked,app.YellowMenu.Checked,app.GreenMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, zeros(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, zeros(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)));
                     
                 case 'Purple'
                     app.PurpleMenu.Checked = 1;
                     [app.RedMenu.Checked,app.OrangeMenu.Checked,app.YellowMenu.Checked,app.GreenMenu.Checked,app.BlueMenu.Checked] = deal(0);
-                    app.colour = cat(3, ones(app.imageSize(1),app.imageSize(2)), zeros(app.imageSize(1),app.imageSize(2)), ones(app.imageSize(1),app.imageSize(2)));
+                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)));
             end
   
             updatePlot(app)
@@ -3713,13 +3783,54 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
         end
 
-        % Drop down opening function: FractionDropDown
+        % Callback function
         function FractionDropDownOpening(app, event)
             
         end
 
-        % Value changed function: PatientDropDown
+        % Callback function
         function patientSelected(app, event)
+            
+        end
+
+        % Callback function
+        function onPatientDropDownChange(app, event)
+           
+        end
+
+        % Value changed function: FractionDropDown
+        function OnFractionDropDownChanged(app, event)
+            % Determine if prospective or retrospective selection.
+            if app.mode == "selection"
+                if app.FractionDropDown.Value == "Select fraction"
+                    disp('setting pros')
+                    app.isRetro = false;
+
+                    % Show start/stop angles.
+                    app.StartAngleLabel.Visible = 'on';
+                    app.StartAngleLamp.Visible = 'on';
+                    app.StartAngleValue.Visible = 'on';
+                    app.StopAngleLabel.Visible = 'on';
+                    app.StopAngleLamp.Visible = 'on';
+                    app.StopAngleValue.Visible = 'on';
+                else
+                    app.isRetro = true;
+
+                    % Hide start/stop angles.
+                    app.StartAngleLabel.Visible = 'off';
+                    app.StartAngleLamp.Visible = 'off';
+                    app.StartAngleValue.Visible = 'off';
+                    app.StopAngleLabel.Visible = 'off';
+                    app.StopAngleLamp.Visible = 'off';
+                    app.StopAngleValue.Visible = 'off';
+                end
+            end
+            
+            updateProjectionsDir(app,0)
+        end
+
+        % Value changed function: PatientDropDown
+        function OnPatientDropDownChanged(app, event)
             if app.mode == "selection"
                 app.paths.export = [app.paths.master, '\', app.folders.images, '\',app.PatientDropDown.Value];
                 app.StartAngleLabel.Visible = 'on';
@@ -3768,6 +3879,28 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.ProjectionsLabel.FontColor = [1.00,0.41,0.16];
             [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
             app.parametersWarning.Visible = 'off';
+        end
+
+        % Callback function
+        function OnFractionDropDownOpened(app, event)
+            
+        end
+
+        % Value changed function: MachineDropDown
+        function OnMachineDropDownChanged(app, event)
+            value = app.MachineDropDown.Value;
+
+            if value == "Elekta"
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [512 512]);
+                app.PixelSpacingValue.Value = 0.8;
+                app.CollimatorCassetteDropDown.Visible = 'on';
+                app.CollimatorCassetteDropDownLabel.Visible = 'on';
+            elseif value == "Varian"
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
+                app.PixelSpacingValue.Value = 0.388;
+                app.CollimatorCassetteDropDown.Visible = 'off';
+                app.CollimatorCassetteDropDownLabel.Visible = 'off';
+            end
         end
     end
 
@@ -4368,7 +4501,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.parametersWarning.WordWrap = 'on';
             app.parametersWarning.FontColor = [1 0.4118 0.1608];
             app.parametersWarning.Visible = 'off';
-            app.parametersWarning.Position = [479 277 318 42];
+            app.parametersWarning.Position = [482 233 318 42];
             app.parametersWarning.Text = 'Warning: unable to determine the pixel spacing, SID, SDD, and x-offset. Confirm these values before proceeding.';
 
             % Create kVImagingParametersPanel
@@ -4378,48 +4511,48 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.kVImagingParametersPanel.Title = 'kV Imaging Parameters';
             app.kVImagingParametersPanel.BackgroundColor = [0.96078431372549 0.96078431372549 0.96078431372549];
             app.kVImagingParametersPanel.FontWeight = 'bold';
-            app.kVImagingParametersPanel.Position = [479 326 310 234];
+            app.kVImagingParametersPanel.Position = [479 276 321 284];
 
             % Create SourcetoisocenterdistanceSIDmmEditFieldLabel
             app.SourcetoisocenterdistanceSIDmmEditFieldLabel = uilabel(app.kVImagingParametersPanel);
             app.SourcetoisocenterdistanceSIDmmEditFieldLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.SourcetoisocenterdistanceSIDmmEditFieldLabel.Position = [28 135 278 22];
+            app.SourcetoisocenterdistanceSIDmmEditFieldLabel.Position = [28 187 278 22];
             app.SourcetoisocenterdistanceSIDmmEditFieldLabel.Text = 'Source to isocenter distance (SID)                    mm';
 
             % Create SourcetodetectordistanceSDDmmLabel
             app.SourcetodetectordistanceSDDmmLabel = uilabel(app.kVImagingParametersPanel);
             app.SourcetodetectordistanceSDDmmLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.SourcetodetectordistanceSDDmmLabel.Position = [28 110 278 22];
+            app.SourcetodetectordistanceSDDmmLabel.Position = [28 162 278 22];
             app.SourcetodetectordistanceSDDmmLabel.Text = 'Source to detector distance (SDD)                    mm';
 
             % Create DetectoroffsetxcoordinatemmLabel
             app.DetectoroffsetxcoordinatemmLabel = uilabel(app.kVImagingParametersPanel);
             app.DetectoroffsetxcoordinatemmLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.DetectoroffsetxcoordinatemmLabel.Position = [28 85 278 22];
+            app.DetectoroffsetxcoordinatemmLabel.Position = [28 87 278 22];
             app.DetectoroffsetxcoordinatemmLabel.Text = 'Detector offset x-coordinate                      l        mm';
 
             % Create offsetValue
             app.offsetValue = uieditfield(app.kVImagingParametersPanel, 'numeric');
             app.offsetValue.HorizontalAlignment = 'center';
             app.offsetValue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.offsetValue.Position = [223 85 47 22];
+            app.offsetValue.Position = [223 87 47 22];
             app.offsetValue.Value = 160;
 
             % Create NumberofimagestoloadLabel
             app.NumberofimagestoloadLabel = uilabel(app.kVImagingParametersPanel);
             app.NumberofimagestoloadLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.NumberofimagestoloadLabel.Position = [29 188 143 22];
+            app.NumberofimagestoloadLabel.Position = [29 238 143 22];
             app.NumberofimagestoloadLabel.Text = 'Number of images to load';
 
             % Create PixelspacingmmLabel
             app.PixelspacingmmLabel = uilabel(app.kVImagingParametersPanel);
             app.PixelspacingmmLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.PixelspacingmmLabel.Position = [27 160 279 22];
-            app.PixelspacingmmLabel.Text = 'Pixel spacing                                                      mm';
+            app.PixelspacingmmLabel.Position = [27 112 279 22];
+            app.PixelspacingmmLabel.Text = 'Detector pixel spacing                                        mm';
 
             % Create offsetLamp
             app.offsetLamp = uilamp(app.kVImagingParametersPanel);
-            app.offsetLamp.Position = [7 89 15 15];
+            app.offsetLamp.Position = [7 91 15 15];
             app.offsetLamp.Color = [0.902 0.902 0.902];
 
             % Create SDDvalue
@@ -4427,12 +4560,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.SDDvalue.Limits = [0 Inf];
             app.SDDvalue.HorizontalAlignment = 'center';
             app.SDDvalue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.SDDvalue.Position = [223 110 47 22];
+            app.SDDvalue.Position = [223 162 47 22];
             app.SDDvalue.Value = 1500;
 
             % Create SDDLamp
             app.SDDLamp = uilamp(app.kVImagingParametersPanel);
-            app.SDDLamp.Position = [7 114 15 15];
+            app.SDDLamp.Position = [7 166 15 15];
             app.SDDLamp.Color = [0.902 0.902 0.902];
 
             % Create SIDvalue
@@ -4440,12 +4573,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.SIDvalue.Limits = [0 Inf];
             app.SIDvalue.HorizontalAlignment = 'center';
             app.SIDvalue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.SIDvalue.Position = [223 135 47 22];
+            app.SIDvalue.Position = [223 187 47 22];
             app.SIDvalue.Value = 1000;
 
             % Create SIDLamp
             app.SIDLamp = uilamp(app.kVImagingParametersPanel);
-            app.SIDLamp.Position = [7 139 15 15];
+            app.SIDLamp.Position = [7 191 15 15];
             app.SIDLamp.Color = [0.902 0.902 0.902];
 
             % Create PixelSpacingValue
@@ -4453,12 +4586,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.PixelSpacingValue.Limits = [0 Inf];
             app.PixelSpacingValue.HorizontalAlignment = 'center';
             app.PixelSpacingValue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.PixelSpacingValue.Position = [223 160 47 22];
+            app.PixelSpacingValue.Position = [223 112 47 22];
             app.PixelSpacingValue.Value = 0.388;
 
             % Create PixelSpacingLamp
             app.PixelSpacingLamp = uilamp(app.kVImagingParametersPanel);
-            app.PixelSpacingLamp.Position = [7 164 15 15];
+            app.PixelSpacingLamp.Position = [7 116 15 15];
             app.PixelSpacingLamp.Color = [0.902 0.902 0.902];
 
             % Create AllCheckBox
@@ -4466,20 +4599,20 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.AllCheckBox.ValueChangedFcn = createCallbackFcn(app, @projectionsLoad, true);
             app.AllCheckBox.Text = 'All';
             app.AllCheckBox.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.AllCheckBox.Position = [239 188 35 22];
+            app.AllCheckBox.Position = [239 238 35 22];
 
             % Create NumberProj
             app.NumberProj = uispinner(app.kVImagingParametersPanel);
             app.NumberProj.Limits = [1 1000];
             app.NumberProj.HorizontalAlignment = 'left';
             app.NumberProj.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.NumberProj.Position = [174 188 58 22];
+            app.NumberProj.Position = [174 238 58 22];
             app.NumberProj.Value = 35;
 
             % Create StopAngleLabel
             app.StopAngleLabel = uilabel(app.kVImagingParametersPanel);
             app.StopAngleLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.StopAngleLabel.Position = [27 35 274 22];
+            app.StopAngleLabel.Position = [27 37 274 22];
             app.StopAngleLabel.Text = 'Detector stop angle                             r              °   ';
 
             % Create StopAngleValue
@@ -4488,18 +4621,18 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.StopAngleValue.ValueDisplayFormat = '%.2f';
             app.StopAngleValue.HorizontalAlignment = 'center';
             app.StopAngleValue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.StopAngleValue.Position = [223 35 47 22];
+            app.StopAngleValue.Position = [223 37 47 22];
             app.StopAngleValue.Value = 360;
 
             % Create StopAngleLamp
             app.StopAngleLamp = uilamp(app.kVImagingParametersPanel);
-            app.StopAngleLamp.Position = [7 39 15 15];
+            app.StopAngleLamp.Position = [7 41 15 15];
             app.StopAngleLamp.Color = [0.902 0.902 0.902];
 
             % Create StartAngleLabel
             app.StartAngleLabel = uilabel(app.kVImagingParametersPanel);
             app.StartAngleLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.StartAngleLabel.Position = [27 60 264 22];
+            app.StartAngleLabel.Position = [27 62 264 22];
             app.StartAngleLabel.Text = 'Detector start angle                                            °';
 
             % Create StartAngleValue
@@ -4508,24 +4641,68 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.StartAngleValue.ValueDisplayFormat = '%.2f';
             app.StartAngleValue.HorizontalAlignment = 'center';
             app.StartAngleValue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.StartAngleValue.Position = [223 60 47 22];
+            app.StartAngleValue.Position = [223 62 47 22];
 
             % Create StartAngleLamp
             app.StartAngleLamp = uilamp(app.kVImagingParametersPanel);
-            app.StartAngleLamp.Position = [7 64 15 15];
+            app.StartAngleLamp.Position = [7 66 15 15];
             app.StartAngleLamp.Color = [0.902 0.902 0.902];
 
-            % Create CollimatorcassetteDropDownLabel
-            app.CollimatorcassetteDropDownLabel = uilabel(app.kVImagingParametersPanel);
-            app.CollimatorcassetteDropDownLabel.Position = [27 9 125 22];
-            app.CollimatorcassetteDropDownLabel.Text = 'Collimator cassette';
+            % Create Label
+            app.Label = uilabel(app.kVImagingParametersPanel);
+            app.Label.Position = [27 11 125 22];
+            app.Label.Text = '';
 
-            % Create CollimatorcassetteDropDown
-            app.CollimatorcassetteDropDown = uidropdown(app.kVImagingParametersPanel);
-            app.CollimatorcassetteDropDown.Items = {'None', 'CTDI-S', 'CTDI-M', 'CTDI-L', 'L2', 'L10', 'L20', 'M2', 'M10', 'M15', 'M20', 'S10', 'S20', '15 x 15'};
-            app.CollimatorcassetteDropDown.Placeholder = 'None';
-            app.CollimatorcassetteDropDown.Position = [221 9 80 22];
-            app.CollimatorcassetteDropDown.Value = 'None';
+            % Create CollimatorCassetteDropDown
+            app.CollimatorCassetteDropDown = uidropdown(app.kVImagingParametersPanel);
+            app.CollimatorCassetteDropDown.Items = {'None', 'CTDI-S', 'CTDI-M', 'CTDI-L', 'L2', 'L10', 'L20', 'M2', 'M10', 'M15', 'M20', 'S10', 'S20', '15 x 15'};
+            app.CollimatorCassetteDropDown.ItemsData = {'[]', '[425.0 30.7]', '[425.0 30.7]', '[425.0 30.7]', '[425.0 56.0]', '[425.0 220.0]', '[425.0 425.0]', '[425.0 54.0]', '[425.0 208.0]', '[425.0 274.2]', '[425.0 425.0]', '[425.0 208.0]', '[425.0 425.0]', '[245.8 245.8]'};
+            app.CollimatorCassetteDropDown.Placeholder = 'None';
+            app.CollimatorCassetteDropDown.Position = [171 11 99 22];
+            app.CollimatorCassetteDropDown.Value = '[]';
+
+            % Create MatrixSizeLabel
+            app.MatrixSizeLabel = uilabel(app.kVImagingParametersPanel);
+            app.MatrixSizeLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
+            app.MatrixSizeLabel.Position = [27 137 288 22];
+            app.MatrixSizeLabel.Text = 'Detector matrix size                                           pixels';
+
+            % Create MatrixSizeLamp
+            app.MatrixSizeLamp = uilamp(app.kVImagingParametersPanel);
+            app.MatrixSizeLamp.Position = [7 141 15 15];
+            app.MatrixSizeLamp.Color = [0.902 0.902 0.902];
+
+            % Create MatrixSizeDropDown
+            app.MatrixSizeDropDown = uidropdown(app.kVImagingParametersPanel);
+            app.MatrixSizeDropDown.Items = {'512x512', '768x1024', '1024x1024'};
+            app.MatrixSizeDropDown.ItemsData = {'[512 512]', '[768 1024]', '[1024 1024]'};
+            app.MatrixSizeDropDown.Placeholder = 'None';
+            app.MatrixSizeDropDown.Position = [171 137 99 22];
+            app.MatrixSizeDropDown.Value = '[768 1024]';
+
+            % Create MachineDropDownLabel
+            app.MachineDropDownLabel = uilabel(app.kVImagingParametersPanel);
+            app.MachineDropDownLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
+            app.MachineDropDownLabel.Position = [28 212 50 22];
+            app.MachineDropDownLabel.Text = 'Machine';
+
+            % Create MachineDropDownLamp
+            app.MachineDropDownLamp = uilamp(app.kVImagingParametersPanel);
+            app.MachineDropDownLamp.Position = [7 216 15 15];
+            app.MachineDropDownLamp.Color = [0.902 0.902 0.902];
+
+            % Create MachineDropDown
+            app.MachineDropDown = uidropdown(app.kVImagingParametersPanel);
+            app.MachineDropDown.Items = {'Elekta', 'Varian'};
+            app.MachineDropDown.ValueChangedFcn = createCallbackFcn(app, @OnMachineDropDownChanged, true);
+            app.MachineDropDown.Position = [171 212 99 22];
+            app.MachineDropDown.Value = 'Varian';
+
+            % Create CollimatorCassetteDropDownLabel
+            app.CollimatorCassetteDropDownLabel = uilabel(app.kVImagingParametersPanel);
+            app.CollimatorCassetteDropDownLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
+            app.CollimatorCassetteDropDownLabel.Position = [27 11 107 22];
+            app.CollimatorCassetteDropDownLabel.Text = 'Collimator cassette';
 
             % Create ExportLabel
             app.ExportLabel = uilabel(app.DataProcessingPanel);
@@ -4619,8 +4796,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Create FractionDropDown
             app.FractionDropDown = uidropdown(app.DataProcessingPanel);
             app.FractionDropDown.Items = {'Fraction'};
-            app.FractionDropDown.DropDownOpeningFcn = createCallbackFcn(app, @FractionDropDownOpening, true);
-            app.FractionDropDown.ValueChangedFcn = createCallbackFcn(app, @fractionSelected, true);
+            app.FractionDropDown.ValueChangedFcn = createCallbackFcn(app, @OnFractionDropDownChanged, true);
             app.FractionDropDown.Enable = 'off';
             app.FractionDropDown.FontSize = 15;
             app.FractionDropDown.FontWeight = 'bold';
@@ -4632,7 +4808,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Create PatientDropDown
             app.PatientDropDown = uidropdown(app.DataProcessingPanel);
             app.PatientDropDown.Items = {'Patient', ''};
-            app.PatientDropDown.ValueChangedFcn = createCallbackFcn(app, @patientSelected, true);
+            app.PatientDropDown.ValueChangedFcn = createCallbackFcn(app, @OnPatientDropDownChanged, true);
             app.PatientDropDown.Enable = 'off';
             app.PatientDropDown.FontSize = 15;
             app.PatientDropDown.FontWeight = 'bold';
@@ -4654,7 +4830,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.ImagingTypeDropDownLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
             app.ImagingTypeDropDownLabel.Enable = 'off';
             app.ImagingTypeDropDownLabel.Visible = 'off';
-            app.ImagingTypeDropDownLabel.Position = [484 255 77 22];
+            app.ImagingTypeDropDownLabel.Position = [487 211 77 22];
             app.ImagingTypeDropDownLabel.Text = 'Imaging Type';
 
             % Create ImagingTypeDropDown
@@ -4664,7 +4840,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.ImagingTypeDropDown.Visible = 'off';
             app.ImagingTypeDropDown.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
             app.ImagingTypeDropDown.BackgroundColor = [0.96078431372549 0.96078431372549 0.96078431372549];
-            app.ImagingTypeDropDown.Position = [630 255 97 22];
+            app.ImagingTypeDropDown.Position = [633 211 97 22];
             app.ImagingTypeDropDown.Value = 'Kilovoltage';
 
             % Show the figure after all components are created
