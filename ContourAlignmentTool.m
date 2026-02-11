@@ -140,7 +140,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Configure folder names - might need to change depending on your
         % folder structure.
         folders = struct( ...
-            'default_cbct_options', ["CBCT1", "CBCT\CBCT1", "."], ...
+            'default_cbct_options', ["CBCT1", fullfile("CBCT", "CBCT1"), "."], ...
             'default_ct_options', ["CT", "Planning CT"], ...
             'default_rtplan', 'Plan', ...
             'default_rtstruct_options', ["Structures", "Structure Set", "Structure set"], ...
@@ -741,12 +741,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             fclose(fid);
             
             %% Use Varian Image toolbox to read the image body
-            javaaddpath([pwd,'\Dependencies\VarianReader.jar']);
+            javaaddpath(fullfile(pwd,'Dependencies', 'VarianReader.jar'));
             
             readerObj = CPS_Reader();
             M = readerObj.getHNC_HND(filename);
             clear readerObj;
-            javarmpath([pwd,'\Dependencies\VarianReader.jar']);
+            javarmpath(fullfile(pwd,'Dependencies', 'VarianReader.jar'));
             
             % Reshape the projection data matrix
             M = reshape(M,info.('uiSizeX'),info.('uiSizeY'));
@@ -1290,7 +1290,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.ProjectionsLabel.Tooltip = app.paths.projections;         
             
             if app.ExportLabel.FontColor(3) ~= 0
-                app.paths.export = [app.paths.projections, '\Contours'];
+                app.paths.export = fullfile(app.paths.projections, 'Contours');
                 app.ExportLabel.Tooltip = app.paths.export;
             end
 
@@ -1369,7 +1369,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.fileType = '.dcm';
 
                 % Create the temp folder
-                app.paths.temp = [app.paths.export, '\temp'];
+                app.paths.temp = fullfile(app.paths.export, 'temp');
                 mkdir(app.paths.temp)
 
                 [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([1.00,0.41,0.16]);
@@ -1422,7 +1422,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.ProjectionsLabel.FontColor = [1.00,0.41,0.16];
                 app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]);
                 [app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
-                [app.MachineDropDownLabel.Color, app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
+                [app.MachineDropDownLamp.Color, app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
                 app.parametersWarning.Visible = 'off';
                 allFilesSelected(app)
 
@@ -1527,7 +1527,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
             if ~browse
                 % Look for default folders.
-                folders = { dir([app.paths.master, '\', app.folders.plans, '\', app.PatientDropDown.Value]).name};
+                folders = { dir(fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value)).name};
                 for f = app.folders.default_ct_options
                     if any(folders == f)
                         app.folders.default_ct = char(f);
@@ -1539,9 +1539,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                         app.folders.default_rtstruct = char(f);
                     end
                 end
-                app.paths.ct = [app.paths.master, '\', app.folders.plans, '\', app.PatientDropDown.Value, '\', app.folders.default_ct];
-                app.paths.plan = [app.paths.master, '\', app.folders.plans, '\', app.PatientDropDown.Value, '\', app.folders.default_rtplan];
-                app.paths.structure = [app.paths.master, '\', app.folders.plans, '\', app.PatientDropDown.Value, '\', app.folders.default_rtstruct];
+                app.paths.ct = fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value, app.folders.default_ct);
+                app.paths.plan = fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value, app.folders.default_rtplan);
+                app.paths.structure = fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value, app.folders.default_rtstruct);
             end
             
             % Set the tooltip for the label to the full directory paths
@@ -1729,13 +1729,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Load the projection.
             if app.mode == "alignment" || app.isRetro
                 if strcmp(app.fileType,'.tiff')
-                    app.projection = imread([app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
+                    app.projection = imread(fullfile(app.Projections(app.currentFrame).folder,app.Projections(app.currentFrame).name));
                     app.projection = app.projection(1:768,1:1024);
                     app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
                     app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
                     
                 elseif strcmp(app.fileType,'.xim')
-                    proj_path = [app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name];
+                    proj_path = fullfile(app.Projections(app.currentFrame).folder,app.Projections(app.currentFrame).name);
                     [~, app.projection] = XimReader(app, proj_path);
                     if any(size(app.projection) == [0, 0])
                         uialert(app.ContourAlignmentToolUIFigure, ['Empty projection found at path: ', proj_path], 'Empty projection')
@@ -1746,19 +1746,19 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
                     
                 elseif strcmp(app.fileType,'.hnc')
-                    [~, app.projection] = HncReader(app,[app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
+                    [~, app.projection] = HncReader(app,fullfile(app.Projections(app.currentFrame).folder,app.Projections(app.currentFrame).name));
                     app.projection = imrotate(app.projection,-90);
                     app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
                     app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
                     
                 elseif strcmp(app.fileType,'.hnd')
-                    [~, app.projection] = HndReader(app,[app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
+                    [~, app.projection] = HndReader(app,fullfile(app.Projections(app.currentFrame).folder,app.Projections(app.currentFrame).name));
                     app.projection = imrotate(app.projection,90);
                     app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
                     app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
                     
                 elseif strcmp(app.fileType,'.his') 
-                    [~, app.projection] = HisReader(app,[app.Projections(app.currentFrame).folder,'\',app.Projections(app.currentFrame).name]);
+                    [~, app.projection] = HisReader(app,fullfile(app.Projections(app.currentFrame).folder,app.Projections(app.currentFrame).name));
                     app.projection = imrotate(app.projection,-90);
                     app.DRR = imrotate(app.DRRs(:,:,app.currentFrame),-90);
                     app.Mask = imrotate(app.Masks(:,:,app.currentFrame),-90);
@@ -2193,7 +2193,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 
                         if ~isequal(app.paths.export,0)
                             app.paths.persistent = app.paths.export;
-                            app.paths.export = [app.paths.export, '\Contours'];
+                            app.paths.export = fullfile(app.paths.export, 'Contours');
                             mkdir(app.paths.export) 
                         end
                         
@@ -2642,7 +2642,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 end
             end
                         
-            patients = dir([app.paths.master, '\', app.folders.plans]);
+            patients = dir(fullfile(app.paths.master, app.folders.plans));
             dirFlags = [patients.isdir];
             dirFlags(1:2) = 0;
             patients = patients(dirFlags);
@@ -2658,7 +2658,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % new list of fraction folders.
             if ~strcmp(app.PatientDropDown.Value,'Select patient')
             
-                fractions = dir([app.paths.master, '\', app.folders.images, '\' ,app.PatientDropDown.Value]);
+                fractions = dir(fullfile(app.paths.master, app.folders.images, app.PatientDropDown.Value));
                 fractions(strcmp({s.name}, "temp")) = [];
                 dirFlags = [fractions.isdir];
                 dirFlags(1:2) = 0;
@@ -2693,7 +2693,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.parametersWarning.Visible = 'off';
             % 
             % if app.mode == "selection"
-            %     app.paths.export = [app.paths.master, '\', app.folders.images, '\', app.PatientDropDown.Value];
+            %     app.paths.export = fullfile(app.paths.master, app.folders.images, app.PatientDropDown.Value);
             % end
         end
 
@@ -2865,7 +2865,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
             if ~isequal(app.paths.export,0)
                 app.paths.persistent = app.paths.export;
-                app.paths.export = [app.paths.export, '\Contours'];
+                app.paths.export = fullfile(app.paths.export, 'Contours');
                 
                 app.ExportLabel.Tooltip = app.paths.export;
                 app.ExportLabel.Text = 'Export folder selected';
@@ -2896,7 +2896,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 
                 % Create the temp folder (execlude stacked dcm projection
                 % case where the folder has been created
-                app.paths.temp = [app.paths.export, '\temp'];
+                app.paths.temp = fullfile(app.paths.export, 'temp');
                 if ~exist(app.paths.temp, 'dir')
                     mkdir(app.paths.temp);
                 end
@@ -2959,7 +2959,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                             projectionAngle = projectionAngle + 90 + offset;
                         
                         elseif strcmp(app.fileType,'.xim')
-                            info = XimReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
+                            info = XimReader(app, fullfile(app.Projections(i).folder, app.Projections(i).name));
                             projectionAngle = info.properties.GantryRtn + 90 - offset; 
                             % BC: Varian TrueBeam detector panel size. Would need to be updated for HyperSight 
                             % with a larger imaging panel.
@@ -2967,11 +2967,11 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                             disp([info.properties.KVCollimatorX1, info.properties.KVCollimatorX2, info.properties.KVCollimatorY1, info.properties.KVCollimatorY2]);
                             
                         elseif strcmp(app.fileType,'.hnc') 
-                            info = HncReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
+                            info = HncReader(app, fullfile(app.Projections(i).folder, app.Projections(i).name));
                             projectionAngle = info.dCBCTPositiveAngle - 90 - offset; 
                             
                         elseif strcmp(app.fileType,'.hnd') 
-                            info = HndReader(app,[app.Projections(i).folder,'\',app.Projections(i).name]);
+                            info = HndReader(app, fullfile(app.Projections(i).folder, app.Projections(i).name));
                             projectionAngle = info.dCBCTPositiveAngle - 90 - offset; 
                             
                         elseif strcmp(app.fileType,'.his') 
@@ -3171,11 +3171,16 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 fprintf(logfile, "Script path: %s\n", script_path);
                 [project_path, ~, ~] = fileparts(mfilename('fullpath'));
                 fprintf(logfile, "Project path: %s\n", project_path);
-                dep_path = [project_path, '\Dependencies'];
+                dep_path = fullfile(project_path, 'Dependencies');
                 fprintf(logfile, "Dep path: %s\n", dep_path);
                 fprintf(logfile, "Temp path: %s\n", app.paths.temp);
-                cmd = [dep_path, '\geometry',cuda,' ',...
-                    '-i "',fullfile(app.paths.temp,'ProjectionAngles.csv"'),' ',...
+                if ismac
+                    exe_path = fullfile(dep_path, 'geometryMac');
+                else
+                    exe_path = fullfile(dep_path, 'geometry');
+                end
+                cmd = [exe_path,cuda,' ',...
+                    '-i "',fullfile(app.paths.temp, 'ProjectionAngles.csv"'),' ',...
                     '--sid ', num2str(app.SIDvalue.Value),' ',...
                     '--sdd ', num2str(app.SDDvalue.Value),' ',...
                     '--proj_iso_x ', num2str(app.offsetValue.Value),' ',...
@@ -3188,7 +3193,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 
                 % Generate the forward projections
                 matrixSize = str2num(app.MatrixSizeDropDown.Value);
-                cmd = [dep_path, '\forwardprojections',cuda,' ',...
+                if ismac
+                    exe_path = fullfile(dep_path, 'forwardprojectionsMac');
+                else
+                    exe_path = fullfile(dep_path, 'forwardprojections');
+                end
+                cmd = [exe_path,cuda,' ',...
                    '-i "',fullfile(app.paths.temp,'CT.mha"'),' ',...
                    '-o "',fullfile(app.paths.temp,'CT_FP.mha"'),' ',...
                    '-g "',fullfile(app.paths.temp,'Geometry.xml"'),' ',...
@@ -3196,12 +3206,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                    '--dimension ',num2str(matrixSize(2)),',',num2str(matrixSize(1)),' ',...
                    '--spacing ', num2str(app.PixelSpacingValue.Value)];
                 disp(cmd)
-                system(cmd); 
+                system(cmd);
                 
                 d.Value = 0.7; 
                 d.Message = 'Generating the structure forward projections';
                 
-                cmd = [dep_path, '\forwardprojections',cuda,' ',...
+                cmd = [exe_path,cuda,' ',...
                     '-i "',fullfile(app.paths.temp,'ROI.mha"'),' ',...
                    '-o "',fullfile(app.paths.temp,'ROI_FP.mha"'),' ',...
                    '-g "',fullfile(app.paths.temp,'Geometry.xml"'),' ',...
@@ -3387,11 +3397,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.SelectStructure.Enable = 'on';
                 app.StartProcessing.Enable = 'on';
                 
-                file = fopen(fullfile(app.paths.export,'error_log.txt'), 'w');
+                filepath = fullfile(app.paths.export, 'error_log.txt')
+                file = fopen(filepath, 'w');
                 fprintf(file, getReport(ME,'extended','hyperlinks','off'));
                 fclose(file);
 
-                message = sprintf('An error during data processing. Error log file located in export folder: %s\\error_log.txt',app.paths.export);
+                message = sprintf('An error during data processing. Error log file located in export folder: %s',filepath);
                 uialert(app.ContourAlignmentToolUIFigure,message,'Data Processing Error');
             end
         end
@@ -3832,7 +3843,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Value changed function: PatientDropDown
         function OnPatientDropDownChanged(app, event)
             if app.mode == "selection"
-                app.paths.export = [app.paths.master, '\', app.folders.images, '\',app.PatientDropDown.Value];
+                app.paths.export = fullfile(app.paths.master, app.folders.images, app.PatientDropDown.Value);
                 app.StartAngleLabel.Visible = 'on';
                 app.StartAngleLamp.Visible = 'on';
                 app.StartAngleValue.Visible = 'on';
@@ -3846,7 +3857,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % new list of fraction folders.
             if ~strcmp(app.PatientDropDown.Value,'Select patient')
             
-                fractions = dir([app.paths.master, '\', app.folders.images, '\' ,app.PatientDropDown.Value]);
+                fractions = dir(fullfile(app.paths.master, app.folders.images, app.PatientDropDown.Value));
                 fractions(strcmp({fractions.name}, "temp")) = [];
                 dirFlags = [fractions.isdir];
                 dirFlags(1:2) = 0;
