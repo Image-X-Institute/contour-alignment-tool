@@ -1,5 +1,6 @@
 *.bak
 Deploy
+.DS_Store
 mode.txt
 release
 resources

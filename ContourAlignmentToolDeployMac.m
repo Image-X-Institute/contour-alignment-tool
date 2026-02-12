@@ -24,7 +24,6 @@ buildResult = compiler.build.standaloneApplication(buildOpts);
 
 % Create package options object, set package properties and package.
 packageOpts = compiler.package.InstallerOptions(buildResult);
-packageOpts.AddRemoveProgramsIcon = "ContourAlignmentTool_resources/icon_48.png";
 packageOpts.ApplicationName = "ContourAlignmentTool";
 packageOpts.DefaultInstallationDir = "/Applications/ContourAlignmentTool/";
 packageOpts.InstallerIcon = "ContourAlignmentTool_resources/icon_48.png";

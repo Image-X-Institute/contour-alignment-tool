@@ -19,11 +19,10 @@ buildOpts.ExecutableName = "PatientSelectionTool";
 buildOpts.ExecutableSplashScreen = "ContourAlignmentTool_resources/selection-splash.png";
 buildOpts.ExecutableVersion = version;
 buildOpts.TreatInputsAsNumeric = false;
-buildResult = compiler.build.standaloneWindowsApplication(buildOpts);
+buildResult = compiler.build.standaloneApplication(buildOpts);
 
 % Create package options object, set package properties and package.
 packageOpts = compiler.package.InstallerOptions(buildResult);
-packageOpts.AddRemoveProgramsIcon = "ContourAlignmentTool_resources/icon_48.png";
 packageOpts.ApplicationName = "PatientSelectionTool";
 packageOpts.DefaultInstallationDir = "/Applications/PatientSelectionTool/";
 packageOpts.InstallerIcon = "ContourAlignmentTool_resources/icon_48.png";
