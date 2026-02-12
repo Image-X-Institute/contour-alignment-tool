@@ -1973,7 +1973,11 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Update the contour centroid location
             if app.mode == "alignment"
                 s = regionprops(double(app.Mask),'centroid');
-                app.position.Text = sprintf('(%.0f, %.0f)',s.Centroid(1),matrixSize(1) - s.Centroid(2));  
+                if ~isempty(s)
+                    app.position.Text = sprintf('(%.0f, %.0f)',s(1).Centroid(1),matrixSize(1) - s(1).Centroid(2));
+                else
+                    app.position.Text = '';
+                end
             end
         end
         
