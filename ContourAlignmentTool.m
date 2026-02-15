@@ -388,16 +388,16 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % From open source: https://github.com/FNNDSC/matlab/blob/master/misc/mha_read_header.m
         % Function for reading the header of a Insight Meta-Image (.mha,.mhd) file
         function info = MhaHeaderReader(~,filename)
-            
+            info = struct();
+
             if(exist('filename','var')==0)
                 [filename, pathname] = uigetfile('*.mha', 'Read mha-file');
                 filename = [pathname filename];
             end
-            
+
             fid=fopen(filename,'rb');
             if(fid<0)
-                fprintf('could not open file %s\n',filename);
-                return
+                error('MhaHeaderReader:FileOpenFailed', 'Could not open file %s', filename);
             end
             
             info.Filename=filename;
@@ -3189,8 +3189,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     '--sdd ', num2str(app.SDDvalue.Value),' ',...
                     '--proj_iso_x ', num2str(app.offsetValue.Value),' ',...
                     '-o "',fullfile(app.paths.temp,'Geometry.xml"')];
+                fprintf(logfile, '\n--- Geometry Command ---\n%s\n', cmd);
                 disp(cmd);
-                system(cmd);
+                [status, cmdout] = system(cmd);
+                fprintf(logfile, 'Exit status: %d\nOutput:\n%s\n', status, cmdout);
                 
                 d.Value = 0.5; 
                 d.Message = 'Generating the CT forward projections';
@@ -3209,8 +3211,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                    '--fp ',fp,' ',...
                    '--dimension ',num2str(matrixSize(2)),',',num2str(matrixSize(1)),' ',...
                    '--spacing ', num2str(app.PixelSpacingValue.Value)];
-                disp(cmd)
-                system(cmd);
+                fprintf(logfile, '\n--- CT Forward Projection Command ---\n%s\n', cmd);
+                disp(cmd);
+                [status, cmdout] = system(cmd);
+                fprintf(logfile, 'Exit status: %d\nOutput:\n%s\n', status, cmdout);
                 
                 d.Value = 0.7; 
                 d.Message = 'Generating the structure forward projections';
@@ -3222,9 +3226,11 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                    '--fp ',fp,' ',...
                    '--dimension ',num2str(matrixSize(2)),',',num2str(matrixSize(1)),' ',...
                    '--spacing ', num2str(app.PixelSpacingValue.Value)];
+                fprintf(logfile, '\n--- ROI Forward Projection Command ---\n%s\n', cmd);
                 disp(cmd);
-                system(cmd);
-    
+                [status, cmdout] = system(cmd);
+                fprintf(logfile, 'Exit status: %d\nOutput:\n%s\n', status, cmdout);
+                    
                 d.Value = 0.9; 
                 d.Message = 'Initialising...';
                 fclose(logfile);
@@ -3401,7 +3407,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.SelectStructure.Enable = 'on';
                 app.StartProcessing.Enable = 'on';
                 
-                filepath = fullfile(app.paths.export, 'error_log.txt')
+                filepath = fullfile(app.paths.export, 'error_log.txt');
                 file = fopen(filepath, 'w');
                 fprintf(file, getReport(ME,'extended','hyperlinks','off'));
                 fclose(file);
