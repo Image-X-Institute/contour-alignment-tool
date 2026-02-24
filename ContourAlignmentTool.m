@@ -140,12 +140,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Configure folder names - might need to change depending on your
         % folder structure.
         folders = struct( ...
-            'default_cbct_options', ["CBCT1", fullfile("CBCT", "CBCT1"), "."], ...
+            'default_projections_options', ["kV", "CBCT1", fullfile("CBCT", "CBCT1"), "."], ...
             'default_ct_options', ["CT", "Planning CT"], ...
-            'default_rtplan', 'Plan', ...
+            'default_rtplan_options', ["Plan"], ...
             'default_rtstruct_options', ["Structures", "Structure Set", "Structure set"], ...
-            'images_options', ["PatientImages", "Patient Images"], ...
-            'plans_options', ["PatientPlans", "Patient Plans"] ...
+            'images_options', ["PatientImages", "Patient Images", "TreatmentFiles", "Treatment Files", "Treatment files"], ...
+            'plans_options', ["PatientPlans", "Patient Plans", "PlanningFiles", "Planning Files"] ...
         );
 
         % Parameters       
@@ -1247,7 +1247,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.Projections = {};
             % if ~isfield(app.paths, 'projections') || ~ischar(app.paths.projections)
             %     % app.paths.projections = [app.paths.master, '\', app.folders.images, '\',app.PatientDropDown.Value];
-            %     app.paths.projections = [app.paths.master, '\', app.folders.images, '\', app.PatientDropDown.Value, '\', app.folders.default_cbct];
+            %     app.paths.projections = [app.paths.master, '\', app.folders.images, '\', app.PatientDropDown.Value, '\', app.folders.default_projections];
             % end
             % If the user uses the browse function, then open a UI for
             % folder selection
@@ -1264,23 +1264,31 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     pathParts = strsplit(app.paths.projections, filesep);
                     fxIdx = find(~cellfun(@isempty, regexp(pathParts, '^Fx\d+$')), 1, 'last');
                     
-                    if ~isempty(fxIdx)
+                    if ~isempty(fxIdx) && ismember(pathParts{fxIdx}, app.FractionDropDown.Items)
                         app.FractionDropDown.Value = pathParts{fxIdx};
                     end
                 end
             else
                 app.paths.projections = '';
-                for i = 1:numel(app.folders.default_cbct_options)
-                    folder = app.folders.default_cbct_options(i);
-                    folderpath = fullfile(app.paths.master, app.folders.images, ...
-                        app.PatientDropDown.Value, app.FractionDropDown.Value, folder);
+                for i = 1:numel(app.folders.default_projections_options)
+                    folder = app.folders.default_projections_options(i);
+                    folderpath = fullfile(app.paths.master, app.folders.images, app.PatientDropDown.Value, app.FractionDropDown.Value, folder);
                     if isfolder(folderpath)
-                        app.folders.default_cbct = folderpath;
-                        app.paths.projections = convertStringsToChars(app.folders.default_cbct);
+                        app.folders.default_projections = folderpath;
+                        app.paths.projections = convertStringsToChars(app.folders.default_projections);
                         break;
                     end
                 end
+
+                if ~isfield(app.paths, "projections")
+                    basePath = fullfile(app.folders.images, app.PatientDropDown.Value, app.FractionDropDown.Value);
+                    fullPaths = fullfile(basePath, app.folders.default_projections_options);
+                    message = ['Please browse for projection images, could not find within the default folders: ', fullPaths];
+                    uiconfirm(app.ContourAlignmentToolUIFigure, message, 'Projection Images Not Found', "Options", "OK", "DefaultOption", 1, "CancelOption", 1);
+                    return
+                end
             end
+
             % Create a progress box
             d = uiprogressdlg(app.ContourAlignmentToolUIFigure,'Title','Data Processing',...
                 'Message','Loading intrafraction images',...
@@ -1533,33 +1541,70 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                         app.folders.default_ct = char(f);
                     end
                 end
-
+                for f = app.folders.default_rtplan_options
+                    if any(folders == f)
+                        app.folders.default_rtplan = char(f);
+                    end
+                end
                 for f = app.folders.default_rtstruct_options
                     if any(folders == f)
                         app.folders.default_rtstruct = char(f);
                     end
                 end
-                app.paths.ct = fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value, app.folders.default_ct);
-                app.paths.plan = fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value, app.folders.default_rtplan);
-                app.paths.structure = fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value, app.folders.default_rtstruct);
+
+                if isfield(app.folders, "default_ct")
+                    app.paths.ct = fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value, app.folders.default_ct);
+                else
+                    basePath = fullfile(app.folders.plans, app.PatientDropDown.Value);
+                    fullPaths = fullfile(basePath, app.folders.default_ct_options);
+                    message = ['Please browse for CT images, could not find within the default folders: ', fullPaths];
+                    uiconfirm(app.ContourAlignmentToolUIFigure, message, 'CT Images Not Found', "Options", "OK", "DefaultOption", 1, "CancelOption", 1);
+                end
+                if isfield(app.folders, "default_rtplan")
+                    app.paths.plan = fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value, app.folders.default_rtplan);
+                else
+                    basePath = fullfile(app.folders.plans, app.PatientDropDown.Value);
+                    fullPaths = fullfile(basePath, app.folders.default_rtplan_options);
+                    message = ['Please browse for RTPLAN file, could not find within the default folders: ', fullPaths];
+                    uiconfirm(app.ContourAlignmentToolUIFigure, message, 'RTPLAN File Not Found', "Options", "OK", "DefaultOption", 1, "CancelOption", 1);
+                end
+                if isfield(app.folders, "default_rtstruct")
+                    app.paths.structure = fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value, app.folders.default_rtstruct);
+                else
+                    basePath = fullfile(app.folders.plans, app.PatientDropDown.Value);
+                    fullPaths = fullfile(basePath, app.folders.default_rtstruct_options);
+                    message = ['Please browse for RTSTRUCT file, could not find within the default folders: ', fullPaths];
+                    uiconfirm(app.ContourAlignmentToolUIFigure, message, 'RTSTRUCT File Not Found', "Options", "OK", "DefaultOption", 1, "CancelOption", 1);
+                end
             end
             
             % Set the tooltip for the label to the full directory paths
-            app.CTLabel.Tooltip = app.paths.ct;
-            app.PlanLabel.Tooltip = app.paths.plan;
-            app.StructureLabel.Tooltip = app.paths.structure;
+            
+            
+            
 
             % --- Collect all DICOM file info ---
-            ctFiles = dir(fullfile(app.paths.ct, '*.dcm'));
-            planFiles = dir(fullfile(app.paths.plan, '*.dcm'));
-            structFiles = dir(fullfile(app.paths.structure, '*.dcm'));
-            if ~isempty(ctFiles) || ~isempty(planFiles) || ~isempty(structFiles)
+            if isfield(app.paths, "ct")
+                app.CTLabel.Tooltip = app.paths.ct;
+                ctFiles = dir(fullfile(app.paths.ct, '*.dcm'));
+            end
+            if isfield(app.paths, "rtplan")
+                app.PlanLabel.Tooltip = app.paths.plan;
+                planFiles = dir(fullfile(app.paths.plan, '*.dcm'));
+            end
+            if isfield(app.paths, "rtstruct")
+                app.StructureLabel.Tooltip = app.paths.structure;
+                structFiles = dir(fullfile(app.paths.structure, '*.dcm'));
+            end
+            if (isfield(app.paths, "ct") && ~isempty(ctFiles)) || ...
+                (isfield(app.paths, "rtplan") && ~isempty(planFiles)) || ...
+                (isfield(app.paths, "rtstruct") && ~isempty(structFiles))
                 d = uiprogressdlg(app.ContourAlignmentToolUIFigure, 'Title', 'Data Processing', ...
                 'Message', 'Initializing...', 'Value', 0.01);
             end
 
             % --- Load CT files ---
-            if ~isempty(ctFiles)
+            if isfield(app.paths, "ct") && ~isempty(ctFiles)
                 d.Message = 'Loading CT DICOM files...';
                 for k = 1:length(ctFiles)
                     d.Value = 0.1 + (k/length(ctFiles)) * 0.2;
@@ -1571,7 +1616,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             end
             
             % --- Load RTPLAN ---
-            if ~isempty(planFiles)
+            if isfield(app.paths, "rtplan") && ~isempty(planFiles)
                 d.Message = 'Loading Plan DICOM files...';
                 for k = 1:length(planFiles)
                     d.Value = 0.4;  % You can fine-tune this if you want smoother animation
@@ -1623,7 +1668,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             end
             
             % --- Load RTSTRUCT ---
-            if ~isempty(structFiles)
+            if isfield(app.paths, "rtstruct") && ~isempty(structFiles)
                 d.Message = 'Loading Structure Set DICOM files...';
                 for k = 1:length(structFiles)
                     d.Value = 0.6;
@@ -2645,15 +2690,17 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     app.folders.plans = char(f);
                 end
             end
-                        
-            patients = dir(fullfile(app.paths.master, app.folders.plans));
-            dirFlags = [patients.isdir];
-            dirFlags(1:2) = 0;
-            patients = patients(dirFlags);
-            patients = struct2cell(patients);
-            app.PatientDropDown.Items = [{'Select patient'},patients(1,:)]; 
-            app.PatientDropDown.Value = 'Select patient'; 
-            app.PatientDropDown.Enable = 'on';
+                    
+            if isfield(app.folders, "plans")
+                patients = dir(fullfile(app.paths.master, app.folders.plans));
+                dirFlags = [patients.isdir];
+                dirFlags(1:2) = 0;
+                patients = patients(dirFlags);
+                patients = struct2cell(patients);
+                app.PatientDropDown.Items = [{'Select patient'},patients(1,:)]; 
+                app.PatientDropDown.Value = 'Select patient'; 
+                app.PatientDropDown.Enable = 'on';
+            end
         end
 
         % Callback function
@@ -2956,6 +3003,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     for i = 1:length(app.Projections)
                         
                         if strcmp(app.fileType,'.tiff')
+                            % BC: Tiff images take the angle from the filename - and assume this is MV gantry, not always true.
+                            % Also are 'tiff' images always from Varian, as we're adding +90.
                             filename = app.Projections(i).name;
                             number_index = find(filename == '_');
                             endIndex = find(filename == '.');
@@ -2963,6 +3012,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                             projectionAngle = projectionAngle + 90 + offset;
                         
                         elseif strcmp(app.fileType,'.xim')
+                            % BC: Xim images read MV gantry angle from properties - this is probably correct as straight from Varian?
                             info = XimReader(app, fullfile(app.Projections(i).folder, app.Projections(i).name));
                             projectionAngle = info.properties.GantryRtn + 90 - offset; 
                             % BC: Varian TrueBeam detector panel size. Would need to be updated for HyperSight 
@@ -3127,8 +3177,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 mhaHeaders{1}.Dimensions = size(imgStacks{1});
                 
                 mhaHeaders{1}.PixelDimensions(1) = app.dcmHeaders{1}.PixelSpacing(1);
-                mhaHeaders{1}.PixelDimensions(3) = app.dcmHeaders{1}.PixelSpacing(2);      
                 mhaHeaders{1}.PixelDimensions(2) = zLocs_sorted{1}(1) - zLocs_sorted{1}(2);
+                mhaHeaders{1}.PixelDimensions(3) = app.dcmHeaders{1}.PixelSpacing(2);      
                 
                 if strcmp(app.fileType,'.his') || strcmp(app.fileType,'.hnd') || strcmp(app.fileType,'.tiff')
                     mhaHeaders{1}.Offset(1) = app.dcmHeaders{1}.ImagePositionPatient(1) + IsoCentrePosition(1); 
@@ -3136,7 +3186,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     mhaHeaders{1}.Offset(1) = app.dcmHeaders{1}.ImagePositionPatient(1) - IsoCentrePosition(1); 
                 end
                 mhaHeaders{1}.Offset(3) = app.dcmHeaders{1}.ImagePositionPatient(2) - IsoCentrePosition(2); 
-                mhaHeaders{1}.Offset(2) = -1*max(zLocs_sorted{1}) + IsoCentrePosition(3);        
+                mhaHeaders{1}.Offset(2) = -1*max(zLocs_sorted{1}) + IsoCentrePosition(3);      
     
                 MhaWriter(app,mhaHeaders{1},imgStacks{1},fullfile(app.paths.temp,'CT.mha'));
     
@@ -3937,7 +3987,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Create ContourAlignmentToolUIFigure and hide until all components are created
             app.ContourAlignmentToolUIFigure = uifigure('Visible', 'off');
             app.ContourAlignmentToolUIFigure.Color = [0.651 0.651 0.651];
-            app.ContourAlignmentToolUIFigure.Position = [497.666666666667 297.666666666667 1134 602];
+            app.ContourAlignmentToolUIFigure.Position = [498 298 1134 602];
             app.ContourAlignmentToolUIFigure.Name = 'Contour Alignment Tool';
             app.ContourAlignmentToolUIFigure.Icon = 'icon_48.png';
             app.ContourAlignmentToolUIFigure.CloseRequestFcn = createCallbackFcn(app, @ContourAlignmentToolUIFigureCloseRequest, true);
@@ -4120,13 +4170,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Create UIAxes
             app.UIAxes = uiaxes(app.GridLayout);
             app.UIAxes.Toolbar.Visible = 'off';
-            app.UIAxes.XTick = [];
-            app.UIAxes.XTickLabelRotation = 0;
-            app.UIAxes.XTickLabel = '';
-            app.UIAxes.YTick = [];
-            app.UIAxes.YTickLabelRotation = 0;
-            app.UIAxes.YTickLabel = '';
-            app.UIAxes.ZTickLabelRotation = 0;
             app.UIAxes.Layout.Row = [1 4];
             app.UIAxes.Layout.Column = [1 3];
             app.UIAxes.Visible = 'off';
@@ -4273,10 +4316,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Create Histogram
             app.Histogram = uiaxes(app.ContrastAdjustmentPanel);
             app.Histogram.Toolbar.Visible = 'off';
-            app.Histogram.XTick = [];
-            app.Histogram.XTickLabel = '';
-            app.Histogram.YTick = [];
-            app.Histogram.YTickLabel = '';
             app.Histogram.Visible = 'off';
             app.Histogram.Position = [1 44 320 80];
 
@@ -4699,7 +4738,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.MatrixSizeDropDown.ItemsData = {'[512 512]', '[768 1024]', '[1024 1024]'};
             app.MatrixSizeDropDown.Placeholder = 'None';
             app.MatrixSizeDropDown.Position = [171 137 99 22];
-            app.MatrixSizeDropDown.Value = '[768 1024]';
+            app.MatrixSizeDropDown.Value = '[512 512]';
 
             % Create MachineDropDownLabel
             app.MachineDropDownLabel = uilabel(app.kVImagingParametersPanel);
@@ -4717,7 +4756,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.MachineDropDown.Items = {'Elekta', 'Varian'};
             app.MachineDropDown.ValueChangedFcn = createCallbackFcn(app, @OnMachineDropDownChanged, true);
             app.MachineDropDown.Position = [171 212 99 22];
-            app.MachineDropDown.Value = 'Varian';
+            app.MachineDropDown.Value = 'Elekta';
 
             % Create CollimatorCassetteDropDownLabel
             app.CollimatorCassetteDropDownLabel = uilabel(app.kVImagingParametersPanel);
