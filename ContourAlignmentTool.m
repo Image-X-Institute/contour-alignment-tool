@@ -1,4 +1,4 @@
- classdef ContourAlignmentTool < matlab.apps.AppBase
+classdef ContourAlignmentTool < matlab.apps.AppBase
 
     % Properties that correspond to app components
     properties (Access = public)
@@ -1252,10 +1252,8 @@
             % If the user uses the browse function, then open a UI for
             % folder selection
             if browse
-                app.paths.projections = "";
-                app.paths.projections = uigetdir(app.paths.projections, ...
+                app.paths.projections = uigetdir(app.paths.persistent, ...
                     'Select the folder containing the intrafraction CBCT images (.tiff, .xim, .hnc, .hnd, .dcm, or .his)');
-            
                 if isequal(app.paths.projections, 0)
                     return;
                 else
@@ -1362,14 +1360,23 @@
                 app.CollimatorCassetteDropDown.Visible = 'on';
                 app.CollimatorCassetteDropDownLabel.Visible = 'on';
                 app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [512 512]); 
-                [app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
+                [app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color, app.offsetLamp.Color] = deal([0.31,0.80,0.00]);
                 app.paths.frames = [app.paths.projections,'/_Frames.xml'];
+                framesInfo = readstruct(app.paths.frames);
+                xOffsets = [framesInfo.Frames.Frame.UCentre];
+                xOffsetMean = round(mean(xOffsets));
+                app.offsetValue.Value = xOffsetMean;
+                xOffsetRange = max(xOffsets) - min(xOffsets);
+                if xOffsetRange > 5
+                    message = sprintf('Detector x-offset values loaded from _Frames.xml have range larger than 5mm, got range %smm', range);
+                    uialert(app.ContourAlignmentToolUIFigure,message,'Detector Offset Error');
+                end
                 files = dir([app.paths.projections '/*.his' ]);
                 [info, ~] = HisReader(app,fullfile(app.paths.projections,files(1).name));
                 app.PixelSpacingValue.Value = info.PixelSpacingX;
-                [app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([1.00,0.41,0.16]);
+                [app.SIDLamp.Color,app.SDDLamp.Color] = deal([1.00,0.41,0.16]);
                 app.PixelSpacingLamp.Color = [0.31,0.80,0.00];
-                app.parametersWarning.Text = 'Warning: unable to determine the SID, SDD, and x-offset. Confirm these values before proceeding.';
+                app.parametersWarning.Text = 'Warning: unable to determine the SID and SDD. Confirm these values before proceeding.';
                 app.parametersWarning.Visible = 'on';
                 app.InvertIntensityMenu.Checked = 0;
             
