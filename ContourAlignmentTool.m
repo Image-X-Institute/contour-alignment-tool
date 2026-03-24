@@ -1,4 +1,4 @@
-classdef ContourAlignmentTool < matlab.apps.AppBase
+ classdef ContourAlignmentTool < matlab.apps.AppBase
 
     % Properties that correspond to app components
     properties (Access = public)
@@ -56,12 +56,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         MatrixSizeLabel               matlab.ui.control.Label
         CollimatorCassetteDropDown    matlab.ui.control.DropDown
         Label                         matlab.ui.control.Label
-        StartAngleLamp                matlab.ui.control.Lamp
-        StartAngleValue               matlab.ui.control.NumericEditField
-        StartAngleLabel               matlab.ui.control.Label
-        StopAngleLamp                 matlab.ui.control.Lamp
-        StopAngleValue                matlab.ui.control.NumericEditField
-        StopAngleLabel                matlab.ui.control.Label
+        KVDetStartAngleLamp           matlab.ui.control.Lamp
+        KVDetStartAngleValue          matlab.ui.control.NumericEditField
+        KVDetStartAngleLabel          matlab.ui.control.Label
+        KVDetStopAngleLamp            matlab.ui.control.Lamp
+        KVDetStopAngleValue           matlab.ui.control.NumericEditField
+        KVDetStopAngleLabel           matlab.ui.control.Label
         NumberProj                    matlab.ui.control.Spinner
         AllCheckBox                   matlab.ui.control.CheckBox
         PixelSpacingLamp              matlab.ui.control.Lamp
@@ -1360,7 +1360,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.fileType = '.his';
                 app.MachineDropDown.Value = "Elekta";
                 app.CollimatorCassetteDropDown.Visible = 'on';
-                app.CollimatorCassetteDropDown.Visible = 'on';
+                app.CollimatorCassetteDropDownLabel.Visible = 'on';
                 app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [512 512]); 
                 [app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
                 app.paths.frames = [app.paths.projections,'/_Frames.xml'];
@@ -1512,12 +1512,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
             % Hide start/stop angle fields.
             if app.mode == "selection"
-                app.StartAngleLabel.Visible = 'off';
-                app.StartAngleLamp.Visible = 'off';
-                app.StartAngleValue.Visible = 'off';
-                app.StopAngleLabel.Visible = 'off';
-                app.StopAngleLamp.Visible = 'off';
-                app.StopAngleValue.Visible = 'off';
+                app.KVDetStartAngleLabel.Visible = 'off';
+                app.KVDetStartAngleLamp.Visible = 'off';
+                app.KVDetStartAngleValue.Visible = 'off';
+                app.KVDetStopAngleLabel.Visible = 'off';
+                app.KVDetStopAngleLamp.Visible = 'off';
+                app.KVDetStopAngleValue.Visible = 'off';
             end
 
             allFilesSelected(app)
@@ -1588,17 +1588,17 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.CTLabel.Tooltip = app.paths.ct;
                 ctFiles = dir(fullfile(app.paths.ct, '*.dcm'));
             end
-            if isfield(app.paths, "rtplan")
+            if isfield(app.paths, "plan")
                 app.PlanLabel.Tooltip = app.paths.plan;
                 planFiles = dir(fullfile(app.paths.plan, '*.dcm'));
             end
-            if isfield(app.paths, "rtstruct")
+            if isfield(app.paths, "structure")
                 app.StructureLabel.Tooltip = app.paths.structure;
                 structFiles = dir(fullfile(app.paths.structure, '*.dcm'));
             end
             if (isfield(app.paths, "ct") && ~isempty(ctFiles)) || ...
-                (isfield(app.paths, "rtplan") && ~isempty(planFiles)) || ...
-                (isfield(app.paths, "rtstruct") && ~isempty(structFiles))
+                (isfield(app.paths, "plan") && ~isempty(planFiles)) || ...
+                (isfield(app.paths, "structure") && ~isempty(structFiles))
                 d = uiprogressdlg(app.ContourAlignmentToolUIFigure, 'Title', 'Data Processing', ...
                 'Message', 'Initializing...', 'Value', 0.01);
             end
@@ -1616,7 +1616,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             end
             
             % --- Load RTPLAN ---
-            if isfield(app.paths, "rtplan") && ~isempty(planFiles)
+            if isfield(app.paths, "plan") && ~isempty(planFiles)
                 d.Message = 'Loading Plan DICOM files...';
                 for k = 1:length(planFiles)
                     d.Value = 0.4;  % You can fine-tune this if you want smoother animation
@@ -1626,49 +1626,51 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                         app.PlanLabel.Tooltip = app.paths.plan;
                         planName = planFiles(k).name;
 
-                        % Get gantry angles for first dynamic beam.
-                        beamNames = fieldnames(info.BeamSequence);
-                        for i = 1:length(beamNames)
-                            beam = info.BeamSequence.(beamNames{i});
-                            if beam.BeamType == "DYNAMIC"
-                                cpNames = fieldnames(beam.ControlPointSequence);
-                                angles = zeros(numel(cpNames), 1);
-                                for j = 1:length(cpNames)
-                                    angles(j) = beam.ControlPointSequence.(cpNames{j}).GantryAngle;
+                        if app.mode == "selection"
+                            % Get gantry angles for first dynamic beam.
+                            beamNames = fieldnames(info.BeamSequence);
+                            for i = 1:length(beamNames)
+                                beam = info.BeamSequence.(beamNames{i});
+                                if beam.BeamType == "DYNAMIC"
+                                    cpNames = fieldnames(beam.ControlPointSequence);
+                                    mVGantryAngles = zeros(numel(cpNames), 1);
+                                    for j = 1:length(cpNames)
+                                        mVGantryAngles(j) = beam.ControlPointSequence.(cpNames{j}).GantryAngle;
+                                    end
+                                    break;
                                 end
-                                break;
                             end
+    
+                            % Control point angles are for MV gantry, we need to apply an offset to attain kV detector
+                            % angles - depends on the manufacturer.
+                            if strcmp(beam.Manufacturer, 'Varian Medical Systems')
+                                kVDetAngles = mVGantryAngles + 90;  % kV panel = MV gantry + 90
+                            elseif strcmp(beam.Manufacturer, 'Elekta')
+                                kVDetAngles = mVGantryAngles - 90;  % kV panel = MV gantry - 90
+                            else
+                                message = ['Could not attain detector angles from RTPLAN file. Unrecognised manufacturer: ', beam.Manufacturer];
+                                uialert(app.ContourAlignmentToolUIFigure, message, 'Gantry Offset Error');
+                            end
+    
+                            % Set start/stop angle.
+                            kVDetAngles = unwrap(kVDetAngles * pi/180) * 180/pi;
+                            if max(kVDetAngles) > 360
+                                kVDetAngles = kVDetAngles - 360;
+                            elseif min(kVDetAngles) < -360
+                                kVDetAngles = kVDetAngles + 360;
+                            end
+                            app.KVDetStartAngleValue.Value = min(kVDetAngles);
+                            app.KVDetStopAngleValue.Value = max(kVDetAngles);
+                            [app.KVDetStartAngleLamp.Color, app.KVDetStopAngleLamp.Color] = deal([0.31,0.80,0.00]);
+    
+                            break;
                         end
-
-                        % Control point angles are for MV gantry, we need to apply an offset to attain kV imager
-                        % angles - depends on the manufacturer.
-                        if strcmp(beam.Manufacturer, 'Varian Medical Systems')
-                            angles = angles + 90;  % kV panel = MV gantry + 90
-                        elseif strcmp(beam.Manufacturer, 'Elekta')
-                            angles = angles - 90;  % kV panel = MV gantry - 90
-                        else
-                            message = ['Could not attain detector angles from RTPLAN file. Unrecognised manufacturer: ', beam.Manufacturer];
-                            uialert(app.ContourAlignmentToolUIFigure, message, 'Gantry Offset Error');
-                        end
-
-                        % Set start/stop angle.
-                        angles = unwrap(angles * pi/180) * 180/pi;
-                        if max(angles) > 360
-                            angles = angles - 360;
-                        elseif min(angles) < -360
-                            angles = angles + 360;
-                        end
-                        app.StartAngleValue.Value = min(angles);
-                        app.StopAngleValue.Value = max(angles);
-                        [app.StartAngleLamp.Color, app.StopAngleLamp.Color] = deal([0.31,0.80,0.00]);
-
-                        break;
                     end
                 end
             end
             
             % --- Load RTSTRUCT ---
-            if isfield(app.paths, "rtstruct") && ~isempty(structFiles)
+            if isfield(app.paths, "structure") && ~isempty(structFiles)
                 d.Message = 'Loading Structure Set DICOM files...';
                 for k = 1:length(structFiles)
                     d.Value = 0.6;
@@ -2342,12 +2344,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 disp("setting pros");
 
                 % Show start/stop angles.
-                app.StartAngleLabel.Visible = 'on';
-                app.StartAngleLamp.Visible = 'on';
-                app.StartAngleValue.Visible = 'on';
-                app.StopAngleLabel.Visible = 'on';
-                app.StopAngleLamp.Visible = 'on';
-                app.StopAngleValue.Visible = 'on';
+                app.KVDetStartAngleLabel.Visible = 'on';
+                app.KVDetStartAngleLamp.Visible = 'on';
+                app.KVDetStartAngleValue.Visible = 'on';
+                app.KVDetStopAngleLabel.Visible = 'on';
+                app.KVDetStopAngleLamp.Visible = 'on';
+                app.KVDetStopAngleValue.Visible = 'on';
             end
             
             % Disable all contour alignment tools
@@ -2456,11 +2458,11 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.StructureLabel.Tooltip = '';
             end
             
-            [app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color, app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color,app.StartAngleLamp.Color, app.StopAngleLamp.Color] = deal([0.90,0.90,0.90]);
+            [app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color, app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color,app.KVDetStartAngleLamp.Color, app.KVDetStopAngleLamp.Color] = deal([0.90,0.90,0.90]);
             if app.mode == "selection" && type == 2
                 % BC: Don't clear out start/stop angle for new fraction - as the plan is still loaded
                 % and this is where start/stop angles come from.
-                [app.StartAngleLamp.Color, app.StopAngleLamp.Color] = deal([0.90,0.90,0.90]);
+                [app.KVDetStartAngleLamp.Color, app.KVDetStopAngleLamp.Color] = deal([0.90,0.90,0.90]);
             end
             app.parametersWarning.Visible = 'off';
 
@@ -2535,12 +2537,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.MachineDropDown.Visible = 'off';
                 app.MachineDropDownLabel.Visible = 'off';
                 app.MachineDropDownLamp.Visible = 'off';
-                app.StartAngleLabel.Visible = 'off';
-                app.StartAngleLamp.Visible = 'off';
-                app.StartAngleValue.Visible = 'off';
-                app.StopAngleLabel.Visible = 'off';
-                app.StopAngleLamp.Visible = 'off';
-                app.StopAngleValue.Visible = 'off';
+                app.KVDetStartAngleLabel.Visible = 'off';
+                app.KVDetStartAngleLamp.Visible = 'off';
+                app.KVDetStartAngleValue.Visible = 'off';
+                app.KVDetStopAngleLabel.Visible = 'off';
+                app.KVDetStopAngleLamp.Visible = 'off';
+                app.KVDetStopAngleValue.Visible = 'off';
             end
             % Defaults to "Varian", which doesn't have collimator cassettes.
             app.CollimatorCassetteDropDown.Visible = 'off';
@@ -2998,13 +3000,14 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     offset = 0;
                 end
                 
-                % Loop through all projections and acquire the angle
+                % Loop through all projections and acquire the angle.
+                % Note: these are the detector angles, this is what the projection code requires!
                 if app.mode == "alignment" || app.isRetro
                     for i = 1:length(app.Projections)
                         
                         if strcmp(app.fileType,'.tiff')
                             % BC: Tiff images take the angle from the filename - and assume this is MV gantry, not always true.
-                            % Also are 'tiff' images always from Varian, as we're adding +90.
+                            % Also are 'tiff' images always from Varian, as we're adding +90?
                             filename = app.Projections(i).name;
                             number_index = find(filename == '_');
                             endIndex = find(filename == '.');
@@ -3049,24 +3052,24 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                             end
                             
                             % Try to get GantryAngle from ExposureSequence (named fields like Item_3)
-                            gantryAngle = NaN;
+                            mVGantryAngle = NaN;
                             if isfield(info, 'ExposureSequence')
                                 itemName = sprintf('Item_%d', frameIndex);
                                 if isfield(info.ExposureSequence, itemName)
                                     exposure = info.ExposureSequence.(itemName);
                                     if isfield(exposure, 'GantryAngle')
-                                        gantryAngle = exposure.GantryAngle;
+                                        mVGantryAngle = exposure.GantryAngle;
                                     end
                                 end
                             end
                             
                             % Fallback to global GantryAngle if per-frame not found
-                            if isnan(gantryAngle) && isfield(info, 'GantryAngle')
-                                gantryAngle = info.GantryAngle;
+                            if isnan(mVGantryAngle) && isfield(info, 'GantryAngle')
+                                mVGantryAngle = info.GantryAngle;
                             end
                             
                             % Final projection angle
-                            projectionAngle = gantryAngle + 90 - offset;
+                            projectionAngle = mVGantryAngle + 90 - offset;
                         end
     
                         % Change angles to be between 0 and 360
@@ -3084,19 +3087,19 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                         
                     end
 
-                    angles = [app.Projections.angle];
-                    angleDelta = abs(mode(diff(angles)));
+                    projectionAngles = [app.Projections.angle];
+                    angleDelta = abs(mode(diff(projectionAngles)));
                 else
                     % Prospective mode, get angles from start/stop angle.
                     if app.AllCheckBox.Value
-                        % angles = app.StartAngleValue.Value:app.angleDiff:app.StopAngleValue.Value;
+                        % angles = app.KVDetStartAngleValue.Value:app.angleDiff:app.KVDetStopAngleValue.Value;
                         angleDelta = 1.0;
                     else
-                        angleDelta = (app.StopAngleValue.Value - app.StartAngleValue.Value) / (app.NumberProj.Value - 1);
+                        angleDelta = (app.KVDetStopAngleValue.Value - app.KVDetStartAngleValue.Value) / (app.NumberProj.Value - 1);
                     end
-                    angles = app.StartAngleValue.Value:angleDelta:app.StopAngleValue.Value;
-                    for i = 1:length(angles)
-                        fprintf(file, '%.4f\n', angles(i));
+                    projectionAngles = app.KVDetStartAngleValue.Value:angleDelta:app.KVDetStopAngleValue.Value;
+                    for i = 1:length(projectionAngles)
+                        fprintf(file, '%.4f\n', projectionAngles(i));
                     end
 
                     % Set image size - this is typically obtained from the kV images.
@@ -3179,7 +3182,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 mhaHeaders{1}.PixelDimensions(1) = app.dcmHeaders{1}.PixelSpacing(1);
                 mhaHeaders{1}.PixelDimensions(2) = zLocs_sorted{1}(1) - zLocs_sorted{1}(2);
                 mhaHeaders{1}.PixelDimensions(3) = app.dcmHeaders{1}.PixelSpacing(2);      
-                
+               
                 if strcmp(app.fileType,'.his') || strcmp(app.fileType,'.hnd') || strcmp(app.fileType,'.tiff')
                     mhaHeaders{1}.Offset(1) = app.dcmHeaders{1}.ImagePositionPatient(1) + IsoCentrePosition(1); 
                 else
@@ -3410,9 +3413,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     n_DRRs = size(app.DRRs, 3);
                     for i = 1:n_DRRs
                         if maskPassed(i)
-                            uitreenode(app.PassedNode, "Text", sprintf('Image %d (%.2f%c)', i, angles(i), char(176)));
+                            uitreenode(app.PassedNode, "Text", sprintf('Image %d (%.2f%c)', i, projectionAngles(i), char(176)));
                         else
-                            uitreenode(app.FailedNode, "Text", sprintf('Image %d (%.2f%c)', i, angles(i), char(176)));
+                            uitreenode(app.FailedNode, "Text", sprintf('Image %d (%.2f%c)', i, projectionAngles(i), char(176)));
                         end
                     end
                 end
@@ -3878,22 +3881,22 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     app.isRetro = false;
 
                     % Show start/stop angles.
-                    app.StartAngleLabel.Visible = 'on';
-                    app.StartAngleLamp.Visible = 'on';
-                    app.StartAngleValue.Visible = 'on';
-                    app.StopAngleLabel.Visible = 'on';
-                    app.StopAngleLamp.Visible = 'on';
-                    app.StopAngleValue.Visible = 'on';
+                    app.KVDetStartAngleLabel.Visible = 'on';
+                    app.KVDetStartAngleLamp.Visible = 'on';
+                    app.KVDetStartAngleValue.Visible = 'on';
+                    app.KVDetStopAngleLabel.Visible = 'on';
+                    app.KVDetStopAngleLamp.Visible = 'on';
+                    app.KVDetStopAngleValue.Visible = 'on';
                 else
                     app.isRetro = true;
 
                     % Hide start/stop angles.
-                    app.StartAngleLabel.Visible = 'off';
-                    app.StartAngleLamp.Visible = 'off';
-                    app.StartAngleValue.Visible = 'off';
-                    app.StopAngleLabel.Visible = 'off';
-                    app.StopAngleLamp.Visible = 'off';
-                    app.StopAngleValue.Visible = 'off';
+                    app.KVDetStartAngleLabel.Visible = 'off';
+                    app.KVDetStartAngleLamp.Visible = 'off';
+                    app.KVDetStartAngleValue.Visible = 'off';
+                    app.KVDetStopAngleLabel.Visible = 'off';
+                    app.KVDetStopAngleLamp.Visible = 'off';
+                    app.KVDetStopAngleValue.Visible = 'off';
                 end
             end
             
@@ -3904,13 +3907,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         function OnPatientDropDownChanged(app, event)
             if app.mode == "selection"
                 app.paths.export = fullfile(app.paths.master, app.folders.images, app.PatientDropDown.Value);
-                app.StartAngleLabel.Visible = 'on';
-                app.StartAngleLamp.Visible = 'on';
-                app.StartAngleValue.Visible = 'on';
-                app.StopAngleLabel.Visible = 'on';
-                app.StopAngleLamp.Visible = 'on';
-                app.StopAngleValue.Visible = 'on';
-                [app.StartAngleLamp.Color, app.StopAngleLamp.Color] = deal([0.90,0.90,0.90]);
+                app.KVDetStartAngleLabel.Visible = 'on';
+                app.KVDetStartAngleLamp.Visible = 'on';
+                app.KVDetStartAngleValue.Visible = 'on';
+                app.KVDetStopAngleLabel.Visible = 'on';
+                app.KVDetStopAngleLamp.Visible = 'on';
+                app.KVDetStopAngleValue.Visible = 'on';
+                [app.KVDetStartAngleLamp.Color, app.KVDetStopAngleLamp.Color] = deal([0.90,0.90,0.90]);
             end
             
             % If the user selects a new patient from the dropdown, load the
@@ -4669,44 +4672,44 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.NumberProj.Position = [174 238 58 22];
             app.NumberProj.Value = 35;
 
-            % Create StopAngleLabel
-            app.StopAngleLabel = uilabel(app.kVImagingParametersPanel);
-            app.StopAngleLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.StopAngleLabel.Position = [27 37 274 22];
-            app.StopAngleLabel.Text = 'Detector stop angle                             r              °   ';
+            % Create KVDetStopAngleLabel
+            app.KVDetStopAngleLabel = uilabel(app.kVImagingParametersPanel);
+            app.KVDetStopAngleLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
+            app.KVDetStopAngleLabel.Position = [27 37 274 22];
+            app.KVDetStopAngleLabel.Text = 'Detector stop angle                             r              °   ';
 
-            % Create StopAngleValue
-            app.StopAngleValue = uieditfield(app.kVImagingParametersPanel, 'numeric');
-            app.StopAngleValue.Limits = [0 360];
-            app.StopAngleValue.ValueDisplayFormat = '%.2f';
-            app.StopAngleValue.HorizontalAlignment = 'center';
-            app.StopAngleValue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.StopAngleValue.Position = [223 37 47 22];
-            app.StopAngleValue.Value = 360;
+            % Create KVDetStopAngleValue
+            app.KVDetStopAngleValue = uieditfield(app.kVImagingParametersPanel, 'numeric');
+            app.KVDetStopAngleValue.Limits = [0 360];
+            app.KVDetStopAngleValue.ValueDisplayFormat = '%.2f';
+            app.KVDetStopAngleValue.HorizontalAlignment = 'center';
+            app.KVDetStopAngleValue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
+            app.KVDetStopAngleValue.Position = [223 37 47 22];
+            app.KVDetStopAngleValue.Value = 360;
 
-            % Create StopAngleLamp
-            app.StopAngleLamp = uilamp(app.kVImagingParametersPanel);
-            app.StopAngleLamp.Position = [7 41 15 15];
-            app.StopAngleLamp.Color = [0.902 0.902 0.902];
+            % Create KVDetStopAngleLamp
+            app.KVDetStopAngleLamp = uilamp(app.kVImagingParametersPanel);
+            app.KVDetStopAngleLamp.Position = [7 41 15 15];
+            app.KVDetStopAngleLamp.Color = [0.902 0.902 0.902];
 
-            % Create StartAngleLabel
-            app.StartAngleLabel = uilabel(app.kVImagingParametersPanel);
-            app.StartAngleLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.StartAngleLabel.Position = [27 62 264 22];
-            app.StartAngleLabel.Text = 'Detector start angle                                            °';
+            % Create KVDetStartAngleLabel
+            app.KVDetStartAngleLabel = uilabel(app.kVImagingParametersPanel);
+            app.KVDetStartAngleLabel.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
+            app.KVDetStartAngleLabel.Position = [27 62 264 22];
+            app.KVDetStartAngleLabel.Text = 'Detector start angle                                            °';
 
-            % Create StartAngleValue
-            app.StartAngleValue = uieditfield(app.kVImagingParametersPanel, 'numeric');
-            app.StartAngleValue.Limits = [-360 360];
-            app.StartAngleValue.ValueDisplayFormat = '%.2f';
-            app.StartAngleValue.HorizontalAlignment = 'center';
-            app.StartAngleValue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.StartAngleValue.Position = [223 62 47 22];
+            % Create KVDetStartAngleValue
+            app.KVDetStartAngleValue = uieditfield(app.kVImagingParametersPanel, 'numeric');
+            app.KVDetStartAngleValue.Limits = [-360 360];
+            app.KVDetStartAngleValue.ValueDisplayFormat = '%.2f';
+            app.KVDetStartAngleValue.HorizontalAlignment = 'center';
+            app.KVDetStartAngleValue.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
+            app.KVDetStartAngleValue.Position = [223 62 47 22];
 
-            % Create StartAngleLamp
-            app.StartAngleLamp = uilamp(app.kVImagingParametersPanel);
-            app.StartAngleLamp.Position = [7 66 15 15];
-            app.StartAngleLamp.Color = [0.902 0.902 0.902];
+            % Create KVDetStartAngleLamp
+            app.KVDetStartAngleLamp = uilamp(app.kVImagingParametersPanel);
+            app.KVDetStartAngleLamp.Position = [7 66 15 15];
+            app.KVDetStartAngleLamp.Color = [0.902 0.902 0.902];
 
             % Create Label
             app.Label = uilabel(app.kVImagingParametersPanel);
