@@ -1304,7 +1304,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Determine parameters from the file headers
             if any(size(dir([app.paths.projections '/*.tiff' ]),1))
                 app.fileType = '.tiff';
-                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [1024 768]); 
                 [app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
                 [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([1.00,0.41,0.16]);
                 app.parametersWarning.Text = 'Warning: unable to determine the pixel spacing, SID, SDD, and x-offset. Confirm these values before proceeding.';
@@ -1315,7 +1315,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.MachineDropDown.Value = "Varian";
                 app.CollimatorCassetteDropDown.Visible = 'off';
                 app.CollimatorCassetteDropDownLabel.Visible = 'off';
-                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [1024 768]); 
                 files = dir([app.paths.projections '/*.xim' ]);
                 info = XimReader(app,fullfile(app.paths.projections,files(1).name));
                 
@@ -1336,7 +1336,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 
             elseif any(size(dir([app.paths.projections '/*.hnc' ]),1))
                 app.fileType = '.hnc';
-                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [1024 768]); 
                 [app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
                 files = dir([app.paths.projections '/*.hnc' ]);
                 [info, ~] = HncReader(app,fullfile(app.paths.projections,files(1).name));
@@ -1348,7 +1348,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 
             elseif any(size(dir([app.paths.projections '/*.hnd' ]),1))
                 app.fileType = '.hnd';
-                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [1024 768]); 
                 [app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
                 [app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([1.00,0.41,0.16]);
                 app.parametersWarning.Text = 'Warning: unable to determine the pixel spacing, SID, SDD, and x-offset. Confirm these values before proceeding.';
@@ -1357,10 +1357,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             elseif any(size(dir([app.paths.projections '/*.his' ]),1))
                 app.fileType = '.his';
                 app.MachineDropDown.Value = "Elekta";
+                app.SIDvalue.Value = 1000;
+                app.SDDvalue.Value = 1536;
                 app.CollimatorCassetteDropDown.Visible = 'on';
                 app.CollimatorCassetteDropDownLabel.Visible = 'on';
                 app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [512 512]); 
-                [app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color, app.offsetLamp.Color] = deal([0.31,0.80,0.00]);
+                [app.SIDLamp.Color, app.SDDLamp.Color, app.MachineDropDownLamp.Color, app.MatrixSizeLamp.Color, app.offsetLamp.Color, app.PixelSpacingLamp.Color] = deal([0.31,0.80,0.00]);
                 app.paths.frames = [app.paths.projections,'/_Frames.xml'];
                 framesInfo = readstruct(app.paths.frames);
                 xOffsets = [framesInfo.Frames.Frame.UCentre];
@@ -1374,10 +1376,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 files = dir([app.paths.projections '/*.his' ]);
                 [info, ~] = HisReader(app,fullfile(app.paths.projections,files(1).name));
                 app.PixelSpacingValue.Value = info.PixelSpacingX;
-                [app.SIDLamp.Color,app.SDDLamp.Color] = deal([1.00,0.41,0.16]);
-                app.PixelSpacingLamp.Color = [0.31,0.80,0.00];
-                app.parametersWarning.Text = 'Warning: unable to determine the SID and SDD. Confirm these values before proceeding.';
-                app.parametersWarning.Visible = 'on';
                 app.InvertIntensityMenu.Checked = 0;
             
             elseif any(size(dir([app.paths.projections '/*.dcm']), 1))
@@ -1398,9 +1396,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                             
                 % --- Matrix size ---
                 if isfield(info, 'Rows') && isfield(info, 'Columns')
-                    app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [info.Rows, info.Columns]);
+                    app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [info.Columns, info.Rows]);
                 else
-                    app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]);  % fallback
+                    app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [1024 768]);  % fallback
                 end
 
                 % --- Pixel Spacing ---
@@ -1435,7 +1433,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             else
                 app.ProjectionsLabel.Text = 'No intrafraction images detected';
                 app.ProjectionsLabel.FontColor = [1.00,0.41,0.16];
-                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]);
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [1024 768]);
                 [app.MatrixSizeLamp.Color] = deal([0.31,0.80,0.00]);
                 [app.MachineDropDownLamp.Color, app.PixelSpacingLamp.Color,app.SIDLamp.Color,app.SDDLamp.Color,app.offsetLamp.Color] = deal([0.90,0.90,0.90]);
                 app.parametersWarning.Visible = 'off';
@@ -1987,11 +1985,11 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
             % Set the width of the projection display
             matrixSize = str2num(app.MatrixSizeDropDown.Value);
-            if app.UIAxes.Position(3)/app.UIAxes.Position(4) <= matrixSize(2)/matrixSize(1)
+            if app.UIAxes.Position(3)/app.UIAxes.Position(4) <= matrixSize(1)/matrixSize(2)
                 app.displaySize(1) = app.UIAxes.Position(3);
-                app.displaySize(2) = app.UIAxes.Position(3)/(matrixSize(2)/matrixSize(1));
+                app.displaySize(2) = app.UIAxes.Position(3)/(matrixSize(1)/matrixSize(2));
             else
-                app.displaySize(1) = app.UIAxes.Position(4)*(matrixSize(2)/matrixSize(1));
+                app.displaySize(1) = app.UIAxes.Position(4)*(matrixSize(1)/matrixSize(2));
                 app.displaySize(2) = app.UIAxes.Position(4);
             end
             
@@ -2028,7 +2026,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             if app.mode == "alignment"
                 s = regionprops(double(app.Mask),'centroid');
                 if ~isempty(s)
-                    app.position.Text = sprintf('(%.0f, %.0f)',s(1).Centroid(1),matrixSize(1) - s(1).Centroid(2));
+                    app.position.Text = sprintf('(%.0f, %.0f)',s(1).Centroid(1),matrixSize(2) - s(1).Centroid(2));
                 else
                     app.position.Text = '';
                 end
@@ -2178,8 +2176,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Calculate the difference between the pointer position and the
             % centroid
             matrixSize = str2num(app.MatrixSizeDropDown.Value);
-            xdifference = round((app.UIAxes.CurrentPoint(1,1)/app.displaySize(1)*matrixSize(2)) - mean(centroids(:,1)));
-            ydifference = round((app.UIAxes.CurrentPoint(1,2)/app.displaySize(2)*matrixSize(1)) - mean(centroids(:,2)));
+            xdifference = round((app.UIAxes.CurrentPoint(1,1)/app.displaySize(1)*matrixSize(1)) - mean(centroids(:,1)));
+            ydifference = round((app.UIAxes.CurrentPoint(1,2)/app.displaySize(2)*matrixSize(2)) - mean(centroids(:,2)));
             
             % Move contour up
             if ydifference < 0
@@ -2316,8 +2314,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 end                                
                 
                 matrixSize = str2num(app.MatrixSizeDropDown.Value);
-                s1.Centroid(2) = matrixSize(1)-s1.Centroid(2);
-                s2.Centroid(2) = matrixSize(1)-s2.Centroid(2);
+                s1.Centroid(2) = matrixSize(2)-s1.Centroid(2);
+                s2.Centroid(2) = matrixSize(2)-s2.Centroid(2);
                 diff= (s1.Centroid-s2.Centroid)*isoSize;
                 fprintf(file, '%s,%.4f,%.4f\n', name(1:k(end)-1),diff(1),diff(2));
             end  
@@ -3269,7 +3267,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                    '-o "',fullfile(app.paths.temp,'CT_FP.mha"'),' ',...
                    '-g "',fullfile(app.paths.temp,'Geometry.xml"'),' ',...
                    '--fp ',fp,' ',...
-                   '--dimension ',num2str(matrixSize(2)),',',num2str(matrixSize(1)),' ',...
+                   '--dimension ',num2str(matrixSize(1)),',',num2str(matrixSize(2)),' ',...
                    '--spacing ', num2str(app.PixelSpacingValue.Value)];
                 fprintf(logfile, '\n--- CT Forward Projection Command ---\n%s\n', cmd);
                 disp(cmd);
@@ -3284,7 +3282,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                    '-o "',fullfile(app.paths.temp,'ROI_FP.mha"'),' ',...
                    '-g "',fullfile(app.paths.temp,'Geometry.xml"'),' ',...
                    '--fp ',fp,' ',...
-                   '--dimension ',num2str(matrixSize(2)),',',num2str(matrixSize(1)),' ',...
+                   '--dimension ',num2str(matrixSize(1)),',',num2str(matrixSize(2)),' ',...
                    '--spacing ', num2str(app.PixelSpacingValue.Value)];
                 fprintf(logfile, '\n--- ROI Forward Projection Command ---\n%s\n', cmd);
                 disp(cmd);
@@ -3298,17 +3296,17 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 %% Load the images
                 app.currentFrame = 1;
                 if app.RedMenu.Checked
-                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, ones(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)));
                 elseif app.OrangeMenu.Checked
-                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2))*0.5, zeros(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, ones(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1))*0.5, zeros(matrixSize(2),matrixSize(1)));
                 elseif app.YellowMenu.Checked
-                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, ones(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)));
                 elseif app.GreenMenu.Checked
-                    app.colour = cat(3, zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, zeros(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)));
                 elseif app.BlueMenu.Checked
-                    app.colour = cat(3, zeros(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, zeros(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1)));
                 elseif app.PurpleMenu.Checked
-                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, ones(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1)));
                 end
      
                 if app.mode == "alignment" || app.isRetro
@@ -3322,24 +3320,22 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 if app.mode == "selection"
                     % Crop the DRRs/Masks if collimator is selected.
                     matrixSize = str2num(app.MatrixSizeDropDown.Value);
-                    xMatrixSize = matrixSize(2);
-                    yMatrixSize = matrixSize(1);
                     pixelSpacing = app.PixelSpacingValue.Value;
                     ccSizeMM = str2num(app.CollimatorCassetteDropDown.Value);
                     if ~isempty(ccSizeMM)
                         ccSize = floor(ccSizeMM / pixelSpacing);
                         xCcSize = ccSize(1);
                         yCcSize = ccSize(2);
-                        if xCcSize > xMatrixSize
-                            xCcSize = xMatrixSize;
+                        if xCcSize > matrixSize(1)
+                            xCcSize = matrixSize(1);
                         end
-                        if yCcSize > yMatrixSize
-                            yCcSize = yMatrixSize;
+                        if yCcSize > matrixSize(2)
+                            yCcSize = matrixSize(2);
                         end
                         % Collimator cassettes are (W, L) with W=x, L=y.
                         % Remove x/yCrop from both sides.
-                        xCrop = floor((xMatrixSize - xCcSize) / 2);
-                        yCrop = floor((yMatrixSize - yCcSize) / 2);
+                        xCrop = floor((matrixSize(1) - xCcSize) / 2);
+                        yCrop = floor((matrixSize(2) - yCcSize) / 2);
                         if xCrop < 0
                             xCrop = 0;
                         end
@@ -3350,7 +3346,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                         % app.Masks = app.Masks(xCrop + 1:xCrop + xCcSize, yCrop + 1:yCrop + yCcSize, :);
 
                         % Darken the cropped voxels, don't remove.
-                        cropMask = false(xMatrixSize, yMatrixSize);
+                        cropMask = false(matrixSize(1), matrixSize(2));
                         cropMask(xCrop + 1:xCrop + xCcSize, yCrop + 1:yCrop + yCcSize) = true;
                         
                         % Apply mask to all slices
@@ -3705,10 +3701,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     
                     ROI = drawrectangle(app.UIAxes);
                     matrixSize = str2num(app.MatrixSizeDropDown.Value);
-                    ROI.Position(1) = round(ROI.Position(1)/app.displaySize(1)*matrixSize(2));
-                    ROI.Position(3) = round(ROI.Position(3)/app.displaySize(1)*matrixSize(2));
-                    ROI.Position(2) = round(ROI.Position(2)/app.displaySize(2)*matrixSize(1));
-                    ROI.Position(4) = round(ROI.Position(4)/app.displaySize(2)*matrixSize(1));
+                    ROI.Position(1) = round(ROI.Position(1)/app.displaySize(1)*matrixSize(1));
+                    ROI.Position(3) = round(ROI.Position(3)/app.displaySize(1)*matrixSize(1));
+                    ROI.Position(2) = round(ROI.Position(2)/app.displaySize(2)*matrixSize(2));
+                    ROI.Position(4) = round(ROI.Position(4)/app.displaySize(2)*matrixSize(2));
                      
                     
                     app.LowerSlider.Value = 0;
@@ -3741,32 +3737,32 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 case 'Red'
                     app.RedMenu.Checked = 1;
                     [app.OrangeMenu.Checked,app.YellowMenu.Checked,app.GreenMenu.Checked,app.BlueMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, ones(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)));
                     
                 case 'Orange'
                     app.OrangeMenu.Checked = 1;
                     [app.RedMenu.Checked,app.YellowMenu.Checked,app.GreenMenu.Checked,app.BlueMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2))*0.5, zeros(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, ones(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1))*0.5, zeros(matrixSize(2),matrixSize(1)));
                     
                 case 'Yellow'
                     app.YellowMenu.Checked = 1;
                     [app.RedMenu.Checked,app.OrangeMenu.Checked,app.GreenMenu.Checked,app.BlueMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, ones(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)));
                     
                 case 'Green'
                     app.GreenMenu.Checked = 1;
                     [app.RedMenu.Checked,app.OrangeMenu.Checked,app.YellowMenu.Checked,app.BlueMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, zeros(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)));
                     
                 case 'Blue'
                     app.BlueMenu.Checked = 1;
                     [app.RedMenu.Checked,app.OrangeMenu.Checked,app.YellowMenu.Checked,app.GreenMenu.Checked,app.PurpleMenu.Checked] = deal(0);
-                    app.colour = cat(3, zeros(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, zeros(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1)));
                     
                 case 'Purple'
                     app.PurpleMenu.Checked = 1;
                     [app.RedMenu.Checked,app.OrangeMenu.Checked,app.YellowMenu.Checked,app.GreenMenu.Checked,app.BlueMenu.Checked] = deal(0);
-                    app.colour = cat(3, ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), ones(matrixSize(1),matrixSize(2)));
+                    app.colour = cat(3, ones(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)), ones(matrixSize(2),matrixSize(1)));
             end
   
             updatePlot(app)
@@ -3974,10 +3970,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             if value == "Elekta"
                 app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [512 512]);
                 app.PixelSpacingValue.Value = 0.8;
+                app.SIDvalue.Value = 1000;
+                app.SDDvalue.Value = 1536;
                 app.CollimatorCassetteDropDown.Visible = 'on';
                 app.CollimatorCassetteDropDownLabel.Visible = 'on';
             elseif value == "Varian"
-                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [768 1024]); 
+                app.MatrixSizeDropDown.Value = sprintf('[%d %d]', [1024 768]); 
                 app.PixelSpacingValue.Value = 0.388;
                 app.CollimatorCassetteDropDown.Visible = 'off';
                 app.CollimatorCassetteDropDownLabel.Visible = 'off';
@@ -4744,8 +4742,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
             % Create MatrixSizeDropDown
             app.MatrixSizeDropDown = uidropdown(app.kVImagingParametersPanel);
-            app.MatrixSizeDropDown.Items = {'512x512', '768x1024', '1024x1024'};
-            app.MatrixSizeDropDown.ItemsData = {'[512 512]', '[768 1024]', '[1024 1024]'};
+            app.MatrixSizeDropDown.Items = {'512x512', '1024x768', '1024x1024'};
+            app.MatrixSizeDropDown.ItemsData = {'[512 512]', '[1024 768]', '[1024 1024]'};
             app.MatrixSizeDropDown.Placeholder = 'None';
             app.MatrixSizeDropDown.Position = [171 137 99 22];
             app.MatrixSizeDropDown.Value = '[512 512]';
