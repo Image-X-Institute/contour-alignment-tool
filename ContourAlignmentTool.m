@@ -123,7 +123,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         C3Node                        matlab.ui.container.TreeNode
         C4Node                        matlab.ui.container.TreeNode
         C5Node                        matlab.ui.container.TreeNode
-        ClinicalAcceptNode            matlab.ui.container.TreeNode
+        ClinicalOKNode                matlab.ui.container.TreeNode
         PassedNode                    matlab.ui.container.TreeNode
         FailedNode                    matlab.ui.container.TreeNode
         ROIselectionLabel             matlab.ui.control.Label
@@ -2141,24 +2141,24 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
             if app.Projections(app.currentFrame).clinicalAccept ~= isAcceptable
                 if isAcceptable == 1
-                    uitreenode(app.ClinicalAcceptNode, "Text", current);
+                    uitreenode(app.ClinicalOKNode, "Text", current);
                 else
-                    if ~isempty(app.ClinicalAcceptNode.Children)
-                        idx = find(strcmp({app.ClinicalAcceptNode.Children.Text}, current));
+                    if ~isempty(app.ClinicalOKNode.Children)
+                        idx = find(strcmp({app.ClinicalOKNode.Children.Text}, current));
                         if ~isempty(idx)
-                            app.ClinicalAcceptNode.Children(idx).delete;
+                            app.ClinicalOKNode.Children(idx).delete;
                         end
                     end
                 end
                 
-                app.ClinicalAcceptNode.Text = sprintf('Clinical Acceptable (%d images)', size(app.ClinicalAcceptNode.Children, 1));
+                app.ClinicalOKNode.Text = sprintf('Clinical Acceptable (%d images)', size(app.ClinicalOKNode.Children, 1));
                 
                 app.Projections(app.currentFrame).clinicalAccept = isAcceptable;
                 
                 i = 1;
                 for k1 = 1:length(app.Projections)
                     if app.Projections(k1).clinicalAccept == 1
-                        app.ClinicalAcceptNode.Children(i).Text = sprintf('Image %d (%.2f%c)', k1, app.Projections(k1).angle, char(176));
+                        app.ClinicalOKNode.Children(i).Text = sprintf('Image %d (%.2f%c)', k1, app.Projections(k1).angle, char(176));
                         i = i + 1;
                     end
                 end
@@ -4298,9 +4298,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.C5Node = uitreenode(app.Tree);
             app.C5Node.Text = '5: Very confident';
 
-            % Create ClinicalAcceptNode
-            app.ClinicalAcceptNode = uitreenode(app.Tree);
-            app.ClinicalAcceptNode.Text = 'Clinical Accept';
+            % Create ClinicalOKNode
+            app.ClinicalOKNode = uitreenode(app.Tree);
+            app.ClinicalOKNode.Text = 'Clinical OK';
 
             % Create PassedNode
             app.PassedNode = uitreenode(app.Tree);
@@ -4614,7 +4614,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Create ClinicalAcceptButton
             app.ClinicalAcceptButton = uibutton(app.ConfidenceButtonGroup, 'state');
             app.ClinicalAcceptButton.ValueChangedFcn = createCallbackFcn(app, @ClinicalAcceptButtonValueChanged2, true);
-            app.ClinicalAcceptButton.Text = 'Clinical Acceptable';
+            app.ClinicalAcceptButton.Text = 'Clinical OK';
             app.ClinicalAcceptButton.FontWeight = 'bold';
             app.ClinicalAcceptButton.Position = [11 6 139 26];
 
