@@ -3561,22 +3561,23 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             else
                 n_images = size(app.DRRs, 3);
             end
+            
+            % if app.mode == "alignment"
+            %         if isfield(app.paths, 'temp') && ~isempty(app.paths.temp)
+            %             outDir = app.paths.temp;
+            %         else
+            %             outDir = tempdir;
+            %         end
+            %         if ~isfolder(outDir)
+            %             mkdir(outDir);
+            %         end
+            %         outPath = fullfile(outDir, sprintf('frame_%04d.png', app.currentFrame));
+            %         I = im2uint16(app.projection);
+            %         imwrite(I, outPath);
+            end
 
             if app.currentFrame + 1 <= n_images
                 save(app)
-                if app.mode == "alignment"
-                    if isfield(app.paths, 'temp') && ~isempty(app.paths.temp)
-                        outDir = app.paths.temp;
-                    else
-                        outDir = tempdir;
-                    end
-                    if ~isfolder(outDir)
-                        mkdir(outDir);
-                    end
-                    outPath = fullfile(outDir, sprintf('frame_%04d.png', app.currentFrame));
-                    I = app.projection;
-                    imwrite(I, outPath);
-                end
                 app.currentFrame = app.currentFrame + 1;
                 loadImages(app)
                 updatePlot(app)
