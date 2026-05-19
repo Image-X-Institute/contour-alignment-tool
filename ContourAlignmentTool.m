@@ -3574,8 +3574,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             %         outPath = fullfile(outDir, sprintf('frame_%04d.png', app.currentFrame));
             %         I = im2uint16(app.projection);
             %         imwrite(I, outPath);
-            end
-
+            % end
+            
             if app.currentFrame + 1 <= n_images
                 save(app)
                 app.currentFrame = app.currentFrame + 1;
