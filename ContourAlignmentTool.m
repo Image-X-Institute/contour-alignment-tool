@@ -2437,6 +2437,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.C3Node.Children.delete;
                 app.C4Node.Children.delete;
                 app.C5Node.Children.delete;
+                app.ClinicalOKNode.Children.delete;
+
+                
             elseif app.mode == "selection"
                 app.PassedNode.Children.delete;
                 app.FailedNode.Children.delete;
@@ -3562,19 +3565,19 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 n_images = size(app.DRRs, 3);
             end
             
-            % if app.mode == "alignment"
-            %         if isfield(app.paths, 'temp') && ~isempty(app.paths.temp)
-            %             outDir = app.paths.temp;
-            %         else
-            %             outDir = tempdir;
-            %         end
-            %         if ~isfolder(outDir)
-            %             mkdir(outDir);
-            %         end
-            %         outPath = fullfile(outDir, sprintf('frame_%04d.png', app.currentFrame));
-            %         I = im2uint16(app.projection);
-            %         imwrite(I, outPath);
-            % end
+            if app.mode == "alignment"
+                    if isfield(app.paths, 'temp') && ~isempty(app.paths.temp)
+                        outDir = app.paths.temp;
+                    else
+                        outDir = tempdir;
+                    end
+                    if ~isfolder(outDir)
+                        mkdir(outDir);
+                    end
+                    outPath = fullfile(outDir, sprintf('frame_%04d.png', app.currentFrame));
+                    I = im2uint16(app.projection);
+                    imwrite(I, outPath);
+            end
             
             if app.currentFrame + 1 <= n_images
                 save(app)
