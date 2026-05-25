@@ -2,8 +2,6 @@
 
 <div align="center">
 
-**An application for performing prospective and retrospective patient selection for the LEARN markerless motion tracking study.**
-
 [Report Bug](https://github.com/Image-X-Institute/contour-alignment-tool/issues) · [Request Feature](https://github.com/Image-X-Institute/contour-alignment-tool/issues)
 
 </div>
@@ -32,7 +30,7 @@
 
 ## About
 
-The **Contour Alignment Tool** is a MATLAB-based application designed for identifying patients with sufficient contour visibility in 2D kilovoltage projections for the LEARN study.
+The **Patient Selection Tool** is an application for performing prospective and retrospective patient selection for the LEARN markerless motion tracking study.
 
 ### Key Features:
 - Load projections along with CT, structure set, and treatment plan files.
@@ -56,8 +54,7 @@ The **Contour Alignment Tool** is a MATLAB-based application designed for identi
 
 ### Installation
 
-1. Download the latest release:  
-   [PatientSelectionTool v1.3.8](https://github.com/Image-X-Institute/contour-alignment-tool/releases/download/v1.3.8/PatientSelectionToolInstaller.v1.3.8.exe)
+1. Download the [latest release](https://github.com/Image-X-Institute/contour-alignment-tool/releases).
 2. Run the installation file.
 
 ---
@@ -92,8 +89,6 @@ Required data types:
    - Number of projections
    - Pixel spacing
    - SID, SDD, detector offset (if not found in headers)
-
-   ![Parameter Setup](https://github.com/Image-X-Institute/contour-alignment-tool/assets/63682590/056855ba-4241-4db8-9f68-d51157f54e7f)
 
 4. **Select the Structure of Interest** from the dropdown.
 
