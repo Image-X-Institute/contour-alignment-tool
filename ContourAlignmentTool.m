@@ -80,18 +80,16 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         parametersWarning             matlab.ui.control.Label
         StartProcessing               matlab.ui.control.Button
         DirectoriesImage              matlab.ui.control.Image
-        ContourAlignmentPanel         matlab.ui.container.Panel
-        ClickdragCheckBox             matlab.ui.control.CheckBox
-        clickdragstatus               matlab.ui.control.Label
-        position                      matlab.ui.control.Label
-        reset                         matlab.ui.control.Image
+        ContourAlignmentandConfidenceScoringPanel  matlab.ui.container.Panel
         ConfidenceButtonGroup         matlab.ui.container.ButtonGroup
+        ClinicalAcceptButton          matlab.ui.control.StateButton
         C0Button                      matlab.ui.control.RadioButton
         C1Button                      matlab.ui.control.RadioButton
         C2Button                      matlab.ui.control.RadioButton
         C3Button                      matlab.ui.control.RadioButton
         C4Button                      matlab.ui.control.RadioButton
         C5Button                      matlab.ui.control.RadioButton
+        ContourAlignmentPanel         matlab.ui.container.Panel
         SW                            matlab.ui.control.Image
         NW                            matlab.ui.control.Image
         W                             matlab.ui.control.Image
@@ -100,6 +98,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         NE                            matlab.ui.control.Image
         N                             matlab.ui.control.Image
         E                             matlab.ui.control.Image
+        ClickdragCheckBox             matlab.ui.control.CheckBox
+        clickdragstatus               matlab.ui.control.Label
+        position                      matlab.ui.control.Label
+        reset                         matlab.ui.control.Image
         ContrastAdjustmentPanel       matlab.ui.container.Panel
         contrastROIButton             matlab.ui.control.StateButton
         contrastContourButton         matlab.ui.control.StateButton
@@ -121,6 +123,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         C3Node                        matlab.ui.container.TreeNode
         C4Node                        matlab.ui.container.TreeNode
         C5Node                        matlab.ui.container.TreeNode
+        ClinicalOKNode                matlab.ui.container.TreeNode
         PassedNode                    matlab.ui.container.TreeNode
         FailedNode                    matlab.ui.container.TreeNode
         ROIselectionLabel             matlab.ui.control.Label
@@ -1242,17 +1245,18 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         function updateProjectionsDir(app, browse)
             % BC: This function updates the kv imaging parameters based on the contents
             % of the projection files.
-            
-            % Reset the projections list variable
+            % ZX 31/03/2026: Update here so browse always openning the
+            % selected fraction folder
             app.Projections = {};
-            % if ~isfield(app.paths, 'projections') || ~ischar(app.paths.projections)
-            %     % app.paths.projections = [app.paths.master, '\', app.folders.images, '\',app.PatientDropDown.Value];
-            %     app.paths.projections = [app.paths.master, '\', app.folders.images, '\', app.PatientDropDown.Value, '\', app.folders.default_projections];
-            % end
-            % If the user uses the browse function, then open a UI for
-            % folder selection
+            if ~isfield(app.paths, 'projections') || ~ischar(app.paths.projections)
+                app.paths.projections = [app.paths.master, '\Patient Images', '\',app.PatientDropDown.Value];
+            end
+            if ~exist(app.paths.projections, 'dir')
+                % Reset to master path if it doesn't exist
+                app.paths.projections = app.paths.master;
+            end
             if browse
-                app.paths.projections = uigetdir(app.paths.persistent, ...
+                app.paths.projections = uigetdir(app.paths.projections, ...
                     'Select the folder containing the intrafraction CBCT images (.tiff, .xim, .hnc, .hnd, .dcm, or .his)');
                 if isequal(app.paths.projections, 0)
                     return;
@@ -2125,6 +2129,41 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 end
             end
             
+            % =========================================================
+            % 2. Clinical Acceptable Node 
+            % =========================================================
+            
+            if ~isfield(app.Projections, 'clinicalAccept')
+                [app.Projections.clinicalAccept] = deal(0); 
+            end
+            
+            isAcceptable = app.ClinicalAcceptButton.Value; 
+            
+            if app.Projections(app.currentFrame).clinicalAccept ~= isAcceptable
+                if isAcceptable == 1
+                    uitreenode(app.ClinicalOKNode, "Text", current);
+                else
+                    if ~isempty(app.ClinicalOKNode.Children)
+                        idx = find(strcmp({app.ClinicalOKNode.Children.Text}, current));
+                        if ~isempty(idx)
+                            app.ClinicalOKNode.Children(idx).delete;
+                        end
+                    end
+                end
+                
+                app.ClinicalOKNode.Text = sprintf('Clinical Acceptable (%d images)', size(app.ClinicalOKNode.Children, 1));
+                
+                app.Projections(app.currentFrame).clinicalAccept = isAcceptable;
+                
+                i = 1;
+                for k1 = 1:length(app.Projections)
+                    if app.Projections(k1).clinicalAccept == 1
+                        app.ClinicalOKNode.Children(i).Text = sprintf('Image %d (%.2f%c)', k1, app.Projections(k1).angle, char(176));
+                        i = i + 1;
+                    end
+                end
+            end
+
             % Update the mask
             if strcmp(app.fileType,'.his')
                 app.Masks(:,:,app.currentFrame) = imrotate(app.Mask,90);
@@ -2158,6 +2197,16 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.C1Button.Value = 1;
             else
                 app.C0Button.Value = 1;
+            end
+
+            if isfield(app.Projections, 'AcceptInClinic') && ~isempty(app.Projections(app.currentFrame).AcceptInClinic)
+                if isgraphics(app.ClinicalAcceptButton)
+                    app.ClinicalAcceptButton.Value = app.Projections(app.currentFrame).AcceptInClinic;
+                end
+            else
+                if isgraphics(app.ClinicalAcceptButton)
+                    app.ClinicalAcceptButton.Value = 0;
+                end
             end
         end
 
@@ -2289,8 +2338,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 elseif app.Projections(k1).confidence == 5
                     baseFileName = [name(1:k(end)-1),'_mask_c5.png'];                 
                 end
-                
-                
+                   
+                % If Clinical Acceptable
+                [~, fileBase, fileExt] = fileparts(baseFileName);
+                if ismember(1, app.Projections(k1).AcceptInClinic)
+                    baseFileName = [fileBase, '_CA', fileExt];
+                end
+
                 if strcmp(app.fileType,'.his')
                     exportMask = imrotate(app.Masks(:,:,k1),-90);
                 else
@@ -2360,7 +2414,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Disable all contour alignment tools
             app.NavigationPanel.Enable = 'off';
             if app.mode == "alignment"
-                app.ContourAlignmentPanel.Enable = 'off';
+                app.ContourAlignmentandConfidenceScoringPanel.Enable = 'off';
             end
             app.ContrastAdjustmentPanel.Enable = 'off';
             app.UIAxes.Visible = 'off';
@@ -2383,6 +2437,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.C3Node.Children.delete;
                 app.C4Node.Children.delete;
                 app.C5Node.Children.delete;
+                app.ClinicalOKNode.Children.delete;
+
+                
             elseif app.mode == "selection"
                 app.PassedNode.Children.delete;
                 app.FailedNode.Children.delete;
@@ -2564,7 +2621,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.C3Node.delete;
                 app.C4Node.delete;
                 app.C5Node.delete;
-                app.ContourAlignmentPanel.delete;
+                app.ContourAlignmentandConfidenceScoringPanel.delete;
             end
 
             % Disable interactivity
@@ -3433,7 +3490,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.DataProcessingPanel.Visible = 'off';
                 app.NavigationPanel.Enable = 'on';
                 if app.mode == "alignment"
-                    app.ContourAlignmentPanel.Enable = 'on';
+                    app.ContourAlignmentandConfidenceScoringPanel.Enable = 'on';
                     app.ExportMenu.Enable = 'on';
                     app.ExportAsMenu.Enable = 'on';
                     app.QuickExportMenu.Visible = 'on';
@@ -3501,25 +3558,37 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
         % Button pushed function: Next
         function NextPushed(app, event)
+                            
             if app.mode == "alignment" || app.isRetro
                 n_images = length(app.Projections);
             else
                 n_images = size(app.DRRs, 3);
             end
             
-            % Go to the next frame if possible
+            if app.mode == "alignment"
+                    if isfield(app.paths, 'temp') && ~isempty(app.paths.temp)
+                        outDir = app.paths.temp;
+                    else
+                        outDir = tempdir;
+                    end
+                    if ~isfolder(outDir)
+                        mkdir(outDir);
+                    end
+                    outPath = fullfile(outDir, sprintf('frame_%04d.png', app.currentFrame));
+                    I = im2uint16(app.projection);
+                    imwrite(I, outPath);
+            end
+            
             if app.currentFrame + 1 <= n_images
                 save(app)
                 app.currentFrame = app.currentFrame + 1;
                 loadImages(app)
                 updatePlot(app)
                 updateImageDetails(app)
-
             else
                 save(app)
                 message = sprintf('End of images');
-                uialert(app.ContourAlignmentToolUIFigure,message,'Data Processing','Icon','warning');
-            
+                uialert(app.ContourAlignmentToolUIFigure, message, 'Data Processing', 'Icon', 'warning');
             end
         end
 
@@ -3958,11 +4027,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.parametersWarning.Visible = 'off';
         end
 
-        % Callback function
-        function OnFractionDropDownOpened(app, event)
-            
-        end
-
         % Value changed function: MachineDropDown
         function OnMachineDropDownChanged(app, event)
             value = app.MachineDropDown.Value;
@@ -3980,6 +4044,11 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.CollimatorCassetteDropDown.Visible = 'off';
                 app.CollimatorCassetteDropDownLabel.Visible = 'off';
             end
+        end
+
+        % Value changed function: ClinicalAcceptButton
+        function ClinicalAcceptButtonValueChanged2(app, event)
+            app.Projections(app.currentFrame).AcceptInClinic = app.ClinicalAcceptButton.Value;
         end
     end
 
@@ -4233,6 +4302,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.C5Node = uitreenode(app.Tree);
             app.C5Node.Text = '5: Very confident';
 
+            % Create ClinicalOKNode
+            app.ClinicalOKNode = uitreenode(app.Tree);
+            app.ClinicalOKNode.Text = 'Clinical OK';
+
             % Create PassedNode
             app.PassedNode = uitreenode(app.Tree);
             app.PassedNode.Text = 'Passed';
@@ -4391,122 +4464,30 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.contrastROIButton.FontColor = [0.129411764705882 0.129411764705882 0.129411764705882];
             app.contrastROIButton.Position = [253 10 56 26];
 
+            % Create ContourAlignmentandConfidenceScoringPanel
+            app.ContourAlignmentandConfidenceScoringPanel = uipanel(app.GridLayout);
+            app.ContourAlignmentandConfidenceScoringPanel.Enable = 'off';
+            app.ContourAlignmentandConfidenceScoringPanel.ForegroundColor = [0.129411764705882 0.129411764705882 0.129411764705882];
+            app.ContourAlignmentandConfidenceScoringPanel.BorderType = 'none';
+            app.ContourAlignmentandConfidenceScoringPanel.Title = 'Contour Alignment and Confidence Scoring';
+            app.ContourAlignmentandConfidenceScoringPanel.BackgroundColor = [0.902 0.902 0.902];
+            app.ContourAlignmentandConfidenceScoringPanel.Layout.Row = 2;
+            app.ContourAlignmentandConfidenceScoringPanel.Layout.Column = 4;
+            app.ContourAlignmentandConfidenceScoringPanel.FontWeight = 'bold';
+            app.ContourAlignmentandConfidenceScoringPanel.FontSize = 12.5;
+
             % Create ContourAlignmentPanel
-            app.ContourAlignmentPanel = uipanel(app.GridLayout);
-            app.ContourAlignmentPanel.Enable = 'off';
-            app.ContourAlignmentPanel.ForegroundColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.ContourAlignmentPanel.BorderType = 'none';
+            app.ContourAlignmentPanel = uipanel(app.ContourAlignmentandConfidenceScoringPanel);
+            app.ContourAlignmentPanel.TitlePosition = 'centertop';
             app.ContourAlignmentPanel.Title = 'Contour Alignment';
-            app.ContourAlignmentPanel.BackgroundColor = [0.902 0.902 0.902];
-            app.ContourAlignmentPanel.Layout.Row = 2;
-            app.ContourAlignmentPanel.Layout.Column = 4;
             app.ContourAlignmentPanel.FontWeight = 'bold';
-            app.ContourAlignmentPanel.FontSize = 12.5;
-
-            % Create E
-            app.E = uiimage(app.ContourAlignmentPanel);
-            app.E.ImageClickedFcn = createCallbackFcn(app, @E_ButtonPushed, true);
-            app.E.Position = [95 91 32 32];
-            app.E.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'east.png');
-
-            % Create N
-            app.N = uiimage(app.ContourAlignmentPanel);
-            app.N.ImageClickedFcn = createCallbackFcn(app, @N_ButtonPushed, true);
-            app.N.Position = [57 129 32 32];
-            app.N.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'north.png');
-
-            % Create NE
-            app.NE = uiimage(app.ContourAlignmentPanel);
-            app.NE.ImageClickedFcn = createCallbackFcn(app, @NE_ButtonPushed, true);
-            app.NE.Position = [95 129 32 32];
-            app.NE.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'northeast.png');
-
-            % Create SE
-            app.SE = uiimage(app.ContourAlignmentPanel);
-            app.SE.ImageClickedFcn = createCallbackFcn(app, @SE_ButtonPushed, true);
-            app.SE.Position = [95 53 32 32];
-            app.SE.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'southeast.png');
-
-            % Create S
-            app.S = uiimage(app.ContourAlignmentPanel);
-            app.S.ImageClickedFcn = createCallbackFcn(app, @S_ButtonPushed, true);
-            app.S.Position = [57 53 32 32];
-            app.S.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'south.png');
-
-            % Create W
-            app.W = uiimage(app.ContourAlignmentPanel);
-            app.W.ImageClickedFcn = createCallbackFcn(app, @W_ButtonPushed, true);
-            app.W.Position = [19 91 32 32];
-            app.W.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'west.png');
-
-            % Create NW
-            app.NW = uiimage(app.ContourAlignmentPanel);
-            app.NW.ImageClickedFcn = createCallbackFcn(app, @NW_ButtonPushed, true);
-            app.NW.Position = [19 129 32 32];
-            app.NW.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'northwest.png');
-
-            % Create SW
-            app.SW = uiimage(app.ContourAlignmentPanel);
-            app.SW.ImageClickedFcn = createCallbackFcn(app, @SW_ButtonPushed, true);
-            app.SW.Position = [19 53 32 32];
-            app.SW.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'southwest.png');
-
-            % Create ConfidenceButtonGroup
-            app.ConfidenceButtonGroup = uibuttongroup(app.ContourAlignmentPanel);
-            app.ConfidenceButtonGroup.ForegroundColor = [0.129411764705882 0.129411764705882 0.129411764705882];
-            app.ConfidenceButtonGroup.Title = 'Confidence in alignment';
-            app.ConfidenceButtonGroup.BackgroundColor = [0.96078431372549 0.96078431372549 0.96078431372549];
-            app.ConfidenceButtonGroup.FontWeight = 'bold';
-            app.ConfidenceButtonGroup.Position = [146 9 168 152];
-
-            % Create C5Button
-            app.C5Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C5Button.Text = {'5: Very confident'; ''};
-            app.C5Button.FontWeight = 'bold';
-            app.C5Button.FontColor = [0.3098 0.8 0];
-            app.C5Button.Position = [11 5 119 22];
-
-            % Create C4Button
-            app.C4Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C4Button.Text = '4: Fairly confident';
-            app.C4Button.FontWeight = 'bold';
-            app.C4Button.FontColor = [0.549 0.9216 0];
-            app.C4Button.Position = [11 26 126 22];
-
-            % Create C3Button
-            app.C3Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C3Button.Text = '3: Neither';
-            app.C3Button.FontWeight = 'bold';
-            app.C3Button.FontColor = [1 0.8078 0.0118];
-            app.C3Button.Position = [11 46 78 22];
-
-            % Create C2Button
-            app.C2Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C2Button.Text = '2: Not very confident';
-            app.C2Button.FontWeight = 'bold';
-            app.C2Button.FontColor = [0.9882 0.3804 0.0196];
-            app.C2Button.Position = [11 66 142 22];
-
-            % Create C1Button
-            app.C1Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C1Button.Text = '1: Not at all confident';
-            app.C1Button.FontWeight = 'bold';
-            app.C1Button.FontColor = [0.9412 0.0196 0.0196];
-            app.C1Button.Position = [11 86 144 22];
-
-            % Create C0Button
-            app.C0Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C0Button.Text = '0: Unlabelled';
-            app.C0Button.FontWeight = 'bold';
-            app.C0Button.FontColor = [0.149 0.149 0.149];
-            app.C0Button.Position = [11 106 142 22];
-            app.C0Button.Value = true;
+            app.ContourAlignmentPanel.Position = [0 2 157 187];
 
             % Create reset
             app.reset = uiimage(app.ContourAlignmentPanel);
             app.reset.ImageClickedFcn = createCallbackFcn(app, @ResetContourButtonPushed, true);
             app.reset.Tooltip = {'Reset contour position'};
-            app.reset.Position = [59 93 28 28];
+            app.reset.Position = [66 91 28 28];
             app.reset.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'reset.png');
 
             % Create position
@@ -4515,7 +4496,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.position.FontSize = 18;
             app.position.FontWeight = 'bold';
             app.position.FontColor = [0.149 0.149 0.149];
-            app.position.Position = [1 8 145 22];
+            app.position.Position = [6 8 145 22];
             app.position.Text = '(0, 0)';
 
             % Create clickdragstatus
@@ -4523,7 +4504,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.clickdragstatus.FontWeight = 'bold';
             app.clickdragstatus.FontColor = [0.3098 0.8 0];
             app.clickdragstatus.Tooltip = {''};
-            app.clickdragstatus.Position = [105 29 25 22];
+            app.clickdragstatus.Position = [110 28 25 22];
             app.clickdragstatus.Text = 'ON';
 
             % Create ClickdragCheckBox
@@ -4531,8 +4512,115 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.ClickdragCheckBox.ValueChangedFcn = createCallbackFcn(app, @ClicknDrag, true);
             app.ClickdragCheckBox.Text = 'Click & drag';
             app.ClickdragCheckBox.FontColor = [0.149 0.149 0.149];
-            app.ClickdragCheckBox.Position = [19 29 87 22];
+            app.ClickdragCheckBox.Position = [24 28 87 22];
             app.ClickdragCheckBox.Value = true;
+
+            % Create E
+            app.E = uiimage(app.ContourAlignmentPanel);
+            app.E.ImageClickedFcn = createCallbackFcn(app, @E_ButtonPushed, true);
+            app.E.Position = [102 89 32 32];
+            app.E.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'east.png');
+
+            % Create N
+            app.N = uiimage(app.ContourAlignmentPanel);
+            app.N.ImageClickedFcn = createCallbackFcn(app, @N_ButtonPushed, true);
+            app.N.Position = [64 127 32 32];
+            app.N.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'north.png');
+
+            % Create NE
+            app.NE = uiimage(app.ContourAlignmentPanel);
+            app.NE.ImageClickedFcn = createCallbackFcn(app, @NE_ButtonPushed, true);
+            app.NE.Position = [102 127 32 32];
+            app.NE.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'northeast.png');
+
+            % Create SE
+            app.SE = uiimage(app.ContourAlignmentPanel);
+            app.SE.ImageClickedFcn = createCallbackFcn(app, @SE_ButtonPushed, true);
+            app.SE.Position = [102 51 32 32];
+            app.SE.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'southeast.png');
+
+            % Create S
+            app.S = uiimage(app.ContourAlignmentPanel);
+            app.S.ImageClickedFcn = createCallbackFcn(app, @S_ButtonPushed, true);
+            app.S.Position = [64 51 32 32];
+            app.S.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'south.png');
+
+            % Create W
+            app.W = uiimage(app.ContourAlignmentPanel);
+            app.W.ImageClickedFcn = createCallbackFcn(app, @W_ButtonPushed, true);
+            app.W.Position = [26 89 32 32];
+            app.W.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'west.png');
+
+            % Create NW
+            app.NW = uiimage(app.ContourAlignmentPanel);
+            app.NW.ImageClickedFcn = createCallbackFcn(app, @NW_ButtonPushed, true);
+            app.NW.Position = [26 127 32 32];
+            app.NW.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'northwest.png');
+
+            % Create SW
+            app.SW = uiimage(app.ContourAlignmentPanel);
+            app.SW.ImageClickedFcn = createCallbackFcn(app, @SW_ButtonPushed, true);
+            app.SW.Position = [26 51 32 32];
+            app.SW.ImageSource = fullfile(pathToMLAPP, 'ContourAlignmentTool_resources', 'southwest.png');
+
+            % Create ConfidenceButtonGroup
+            app.ConfidenceButtonGroup = uibuttongroup(app.ContourAlignmentandConfidenceScoringPanel);
+            app.ConfidenceButtonGroup.ForegroundColor = [0.129411764705882 0.129411764705882 0.129411764705882];
+            app.ConfidenceButtonGroup.TitlePosition = 'centertop';
+            app.ConfidenceButtonGroup.Title = 'Contour Scoring';
+            app.ConfidenceButtonGroup.BackgroundColor = [0.96078431372549 0.96078431372549 0.96078431372549];
+            app.ConfidenceButtonGroup.FontWeight = 'bold';
+            app.ConfidenceButtonGroup.Position = [157 2 164 187];
+
+            % Create C5Button
+            app.C5Button = uiradiobutton(app.ConfidenceButtonGroup);
+            app.C5Button.Text = {'5: Very confident'; ''};
+            app.C5Button.FontWeight = 'bold';
+            app.C5Button.FontColor = [0.3098 0.8 0];
+            app.C5Button.Position = [11 40 119 22];
+
+            % Create C4Button
+            app.C4Button = uiradiobutton(app.ConfidenceButtonGroup);
+            app.C4Button.Text = '4: Fairly confident';
+            app.C4Button.FontWeight = 'bold';
+            app.C4Button.FontColor = [0.549 0.9216 0];
+            app.C4Button.Position = [11 61 126 22];
+
+            % Create C3Button
+            app.C3Button = uiradiobutton(app.ConfidenceButtonGroup);
+            app.C3Button.Text = '3: Neither';
+            app.C3Button.FontWeight = 'bold';
+            app.C3Button.FontColor = [1 0.8078 0.0118];
+            app.C3Button.Position = [11 81 78 22];
+
+            % Create C2Button
+            app.C2Button = uiradiobutton(app.ConfidenceButtonGroup);
+            app.C2Button.Text = '2: Not very confident';
+            app.C2Button.FontWeight = 'bold';
+            app.C2Button.FontColor = [0.9882 0.3804 0.0196];
+            app.C2Button.Position = [11 101 142 22];
+
+            % Create C1Button
+            app.C1Button = uiradiobutton(app.ConfidenceButtonGroup);
+            app.C1Button.Text = '1: Not at all confident';
+            app.C1Button.FontWeight = 'bold';
+            app.C1Button.FontColor = [0.9412 0.0196 0.0196];
+            app.C1Button.Position = [11 121 144 22];
+
+            % Create C0Button
+            app.C0Button = uiradiobutton(app.ConfidenceButtonGroup);
+            app.C0Button.Text = '0: Unlabelled';
+            app.C0Button.FontWeight = 'bold';
+            app.C0Button.FontColor = [0.149 0.149 0.149];
+            app.C0Button.Position = [11 141 142 22];
+            app.C0Button.Value = true;
+
+            % Create ClinicalAcceptButton
+            app.ClinicalAcceptButton = uibutton(app.ConfidenceButtonGroup, 'state');
+            app.ClinicalAcceptButton.ValueChangedFcn = createCallbackFcn(app, @ClinicalAcceptButtonValueChanged2, true);
+            app.ClinicalAcceptButton.Text = 'Clinical OK';
+            app.ClinicalAcceptButton.FontWeight = 'bold';
+            app.ClinicalAcceptButton.Position = [11 6 139 26];
 
             % Create DataProcessingPanel
             app.DataProcessingPanel = uipanel(app.GridLayout);
