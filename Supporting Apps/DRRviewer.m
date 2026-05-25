@@ -68,8 +68,8 @@ classdef DRRviewer < matlab.apps.AppBase
                 
                 matrixSize = str2num(app.CallingApp.MatrixSizeDropDown.Value);
                 windowposition(2) = s.BoundingBox(2)+s.BoundingBox(4)+windowsize/2;
-                if windowposition(2) > matrixSize(1)
-                    windowposition(2) = matrixSize(1);
+                if windowposition(2) > matrixSize(2)
+                    windowposition(2) = matrixSize(2);
                 end
                 
                 windowposition(3) = s.BoundingBox(1)-windowsize/2;
@@ -78,8 +78,8 @@ classdef DRRviewer < matlab.apps.AppBase
                 end
                 
                 windowposition(4) =  s.BoundingBox(1)+s.BoundingBox(3)+windowsize/2;
-                if windowposition(4) > matrixSize(2)
-                    windowposition(4) = matrixSize(2);
+                if windowposition(4) > matrixSize(1)
+                    windowposition(4) = matrixSize(1);
                 end
 
                 lower = min(min(app.I(windowposition(1):windowposition(2),...
@@ -96,11 +96,11 @@ classdef DRRviewer < matlab.apps.AppBase
                 
             % Set the width of the DRR display
             matrixSize = str2num(app.CallingApp.MatrixSizeDropDown.Value);
-            if app.UIAxes.Position(3)/app.UIAxes.Position(4) <= matrixSize(2)/matrixSize(1)
+            if app.UIAxes.Position(3)/app.UIAxes.Position(4) <= matrixSize(1)/matrixSize(2)
                 app.displaySize(1) = app.UIAxes.Position(3);
-                app.displaySize(2) = app.UIAxes.Position(3)/(matrixSize(2)/matrixSize(1));
+                app.displaySize(2) = app.UIAxes.Position(3)/(matrixSize(1)/matrixSize(2));
             else
-                app.displaySize(1) = app.UIAxes.Position(4)*(matrixSize(2)/matrixSize(1));
+                app.displaySize(1) = app.UIAxes.Position(4)*(matrixSize(1)/matrixSize(2));
                 app.displaySize(2) = app.UIAxes.Position(4);
             end                       
             
@@ -161,8 +161,8 @@ classdef DRRviewer < matlab.apps.AppBase
             % Create the image used for the original contour position
             % border
             matrixSize = str2num(app.CallingApp.MatrixSizeDropDown.Value);
-            app.checkers = checkerboard(4,matrixSize(1)/8,matrixSize(2)/8)>0;
-            app.checkers = double(cat(3,app.checkers,app.checkers,app.checkers)).*cat(3, ones(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)), zeros(matrixSize(1),matrixSize(2)));
+            app.checkers = checkerboard(4,matrixSize(2)/8,matrixSize(1)/8)>0;
+            app.checkers = double(cat(3,app.checkers,app.checkers,app.checkers)).*cat(3, ones(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)), zeros(matrixSize(2),matrixSize(1)));
         end
 
         % Close request function: drrUIFigure
@@ -199,10 +199,10 @@ classdef DRRviewer < matlab.apps.AppBase
                     
                     matrixSize = str2num(app.CallingApp.MatrixDropDown.Value);
                     ROI = drawrectangle(app.UIAxes);
-                    ROI.Position(1) = round(ROI.Position(1)/app.displaySize(1)*matrixSize(2));
-                    ROI.Position(3) = round(ROI.Position(3)/app.displaySize(1)*matrixSize(2));
-                    ROI.Position(2) = round(ROI.Position(2)/app.displaySize(2)*matrixSize(1));
-                    ROI.Position(4) = round(ROI.Position(4)/app.displaySize(2)*matrixSize(1));
+                    ROI.Position(1) = round(ROI.Position(1)/app.displaySize(1)*matrixSize(1));
+                    ROI.Position(3) = round(ROI.Position(3)/app.displaySize(1)*matrixSize(1));
+                    ROI.Position(2) = round(ROI.Position(2)/app.displaySize(2)*matrixSize(2));
+                    ROI.Position(4) = round(ROI.Position(4)/app.displaySize(2)*matrixSize(2));
                      
                     
                     app.LowerSlider.Value = 0;
