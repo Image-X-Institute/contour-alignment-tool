@@ -247,15 +247,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             info = MhaHeaderReader(app,filename);
             
             if nargout == 1
-                if exist('tempdir','var')
-                    rmdir(tempdir,'s');
-                end
                 return;
             else
                 M = MhaVolumeReader(app,info);
-                if exist('tempdir','var')
-                    rmdir(tempdir,'s');
-                end
             end
             
             return  
@@ -2553,13 +2547,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Close the contour alignment tool
         function closeapp(app, ~, event)
             if strcmp(event.SelectedOption,'OK')
-                if isfield(app.paths, 'temp')
-                    if exist(app.paths.temp,"file")
-                        fclose('all');
-                        rmdir(app.paths.temp,'s');
-                    end
-                end
-
                 delete(app.DrrApp)
                 delete(app.UpdatesApp)
                 delete(app.AboutApp)
