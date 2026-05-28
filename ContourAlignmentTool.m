@@ -29,7 +29,6 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         AboutMenu                     matlab.ui.container.Menu
         GridLayout                    matlab.ui.container.GridLayout
         DataProcessingPanel           matlab.ui.container.Panel
-        TempDirBrowse                 matlab.ui.control.Button
         TempDir                       matlab.ui.control.EditField
         TempdirLabel                  matlab.ui.control.Label
         ImagingTypeDropDown           matlab.ui.control.DropDown
@@ -247,9 +246,15 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             info = MhaHeaderReader(app,filename);
             
             if nargout == 1
+                if exist('tempdir','var')
+                    rmdir(tempdir,'s');
+                end
                 return;
             else
                 M = MhaVolumeReader(app,info);
+                if exist('tempdir','var')
+                    rmdir(tempdir,'s');
+                end
             end
             
             return  
@@ -2547,6 +2552,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Close the contour alignment tool
         function closeapp(app, ~, event)
             if strcmp(event.SelectedOption,'OK')
+                if isfield(app.paths, 'temp')
+                    if exist(app.paths.temp,"file")
+                        fclose('all');
+                        rmdir(app.paths.temp,'s');
+                    end
+                end
+
                 delete(app.DrrApp)
                 delete(app.UpdatesApp)
                 delete(app.AboutApp)
@@ -4056,7 +4068,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             app.Projections(app.currentFrame).AcceptInClinic = app.ClinicalAcceptButton.Value;
         end
 
-        % Button pushed function: TempDirBrowse
+        % Callback function: not associated with a component
         function TempDirBrowsePushed(app, event)
             f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
             selected = uigetdir(app.paths.temp, 'Select the temp folder location');
@@ -5018,18 +5030,13 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             % Create TempdirLabel
             app.TempdirLabel = uilabel(app.DataProcessingPanel);
             app.TempdirLabel.HorizontalAlignment = 'right';
-            app.TempdirLabel.Position = [86 7 54 22];
+            app.TempdirLabel.Position = [8 12 54 22];
             app.TempdirLabel.Text = 'Temp dir:';
 
             % Create TempDir
             app.TempDir = uieditfield(app.DataProcessingPanel, 'text');
-            app.TempDir.Position = [155 7 330 22];
-
-            % Create TempDirBrowse
-            app.TempDirBrowse = uibutton(app.DataProcessingPanel, 'push');
-            app.TempDirBrowse.ButtonPushedFcn = createCallbackFcn(app, @TempDirBrowsePushed, true);
-            app.TempDirBrowse.Position = [17 8 65 21];
-            app.TempDirBrowse.Text = 'Browse';
+            app.TempDir.Editable = 'off';
+            app.TempDir.Position = [77 12 330 22];
 
             % Show the figure after all components are created
             app.ContourAlignmentToolUIFigure.Visible = 'on';
