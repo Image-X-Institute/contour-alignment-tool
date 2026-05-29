@@ -2638,6 +2638,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.C4Node.delete;
                 app.C5Node.delete;
                 app.ContourAlignmentandConfidenceScoringPanel.delete;
+                app.ClinicalOKNode.delete;
             end
 
             % Disable interactivity
