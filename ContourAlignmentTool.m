@@ -3034,7 +3034,15 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
         % Button pushed function: StartProcessing
         function StartProcessingButtonPushed(app, event)
-        % BC: This function creates the DRRs.
+            % BC: This function creates the DRRs.
+
+            % Check the pixel spacing. Although we can load different x/y
+            % pixel spacings, the IGT code only handles a single spacing.
+            if app.PixelSpacingX.Value ~= app.PixelSpacingY.Value
+                uialert(app.ContourAlignmentToolUIFigure, 'Pixel spacings X/Y must match due to IGT limitation', 'Unmatched Pixel Spacings')
+                return
+            end
+
             try
 
                 % Disable all of the user selection buttons
