@@ -1747,50 +1747,54 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.CTLabel.FontColor = [0.94,0.02,0.02];
             end
             
-            if isfile(app.paths.plan)
-                app.PlanLabel.Text = ['Plan loaded (' char(planName),')'];
-                app.PlanLabel.FontColor = [0.31,0.80,0.00];
-            elseif ~browse
-                app.PlanLabel.Text = 'Plan not detected';
-                app.PlanLabel.FontColor = [0.94,0.02,0.02];
+            if ~browse
+                if isfile(app.paths.plan)
+                    app.PlanLabel.Text = ['Plan loaded (' char(planName),')'];
+                    app.PlanLabel.FontColor = [0.31,0.80,0.00];
+                else
+                    app.PlanLabel.Text = 'Plan not detected';
+                    app.PlanLabel.FontColor = [0.94,0.02,0.02];
+                end
             end
             
-            if isfile(app.paths.structure)
-                app.StructureLabel.Text = ['Structure set loaded (', char(structureName),')'];
-                app.StructureLabel.FontColor = [0.31,0.80,0.00];
-                
-                try
-                    info = dicominfo(app.paths.structure); 
-                    info = dicomContours(info);
-                catch
-                    info = dicominfo(app.paths.structure,'UseVRHeuristic',false);
-                    info = dicomContours(info);
-                end
-                
-                ii = 1;
-                C = cell(size(info.ROIs,1),1);
-                for i = 1:size(info.ROIs,1)
-                    if ~isempty(info.ROIs.GeometricType{i,1})>0
-                        if strcmp(string(info.ROIs.GeometricType{i,1}(1)),'CLOSED_PLANAR')
-                            C(ii,1) = info.ROIs{i,2};
-                            ii = ii + 1;
+            if ~browse
+                if isfile(app.paths.structure)
+                    app.StructureLabel.Text = ['Structure set loaded (', char(structureName),')'];
+                    app.StructureLabel.FontColor = [0.31,0.80,0.00];
+                    
+                    try
+                        info = dicominfo(app.paths.structure); 
+                        info = dicomContours(info);
+                    catch
+                        info = dicominfo(app.paths.structure,'UseVRHeuristic',false);
+                        info = dicomContours(info);
+                    end
+                    
+                    ii = 1;
+                    C = cell(size(info.ROIs,1),1);
+                    for i = 1:size(info.ROIs,1)
+                        if ~isempty(info.ROIs.GeometricType{i,1})>0
+                            if strcmp(string(info.ROIs.GeometricType{i,1}(1)),'CLOSED_PLANAR')
+                                C(ii,1) = info.ROIs{i,2};
+                                ii = ii + 1;
+                            end
                         end
                     end
+                    C(ii:end) = [];
+                    
+                    app.SelectStructure.Items = [{'Select structure'};C(:,1)];  
+                    app.SelectStructure.Value = 'Select structure';
+                    app.SelectStructureStatus.Visible = 'on';
+                    app.SelectStructureStatus.BackgroundColor = [1.00,0.41,0.16];
+                    app.SelectStructure.Visible = 'on';
+     
+                else
+                    app.StructureLabel.Text = 'Structure set not detected';
+                    app.StructureLabel.FontColor = [1.00,0.41,0.16];
+                    app.SelectStructureStatus.BackgroundColor = [1.00,0.41,0.16];
+                    app.SelectStructure.Visible = 'off';
+                    app.SelectStructureStatus.Visible = 'off';
                 end
-                C(ii:end) = [];
-                
-                app.SelectStructure.Items = [{'Select structure'};C(:,1)];  
-                app.SelectStructure.Value = 'Select structure';
-                app.SelectStructureStatus.Visible = 'on';
-                app.SelectStructureStatus.BackgroundColor = [1.00,0.41,0.16];
-                app.SelectStructure.Visible = 'on';
- 
-            elseif ~browse
-                app.StructureLabel.Text = 'Structure set not detected';
-                app.StructureLabel.FontColor = [1.00,0.41,0.16];
-                app.SelectStructureStatus.BackgroundColor = [1.00,0.41,0.16];
-                app.SelectStructure.Visible = 'off';
-                app.SelectStructureStatus.Visible = 'off';
             end
             
             if isfile(app.paths.structure) || isfile(app.paths.plan) || ~isempty(app.dcmHeaders)
