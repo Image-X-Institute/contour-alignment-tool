@@ -4593,38 +4593,43 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
 
             % Create C5Button
             app.C5Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C5Button.Text = {'5: Very confident'; ''};
+            app.C5Button.Tooltip = {'Target structure is very visible with its shape completely distinguishable (contour can be overlaid precisely onto target)'};
+            app.C5Button.Text = '5: Very Visible';
             app.C5Button.FontWeight = 'bold';
             app.C5Button.FontColor = [0.3098 0.8 0];
-            app.C5Button.Position = [11 40 119 22];
+            app.C5Button.Position = [11 40 103 22];
 
             % Create C4Button
             app.C4Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C4Button.Text = '4: Fairly confident';
+            app.C4Button.Tooltip = {'Target structure is visible with its shape almost completely distinguishable'};
+            app.C4Button.Text = '4: Visible';
             app.C4Button.FontWeight = 'bold';
             app.C4Button.FontColor = [0.549 0.9216 0];
             app.C4Button.Position = [11 61 126 22];
 
             % Create C3Button
             app.C3Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C3Button.Text = '3: Neither';
+            app.C3Button.Tooltip = {'Target contrast is adequately visible'};
+            app.C3Button.Text = '3: Adequately Visible';
             app.C3Button.FontWeight = 'bold';
             app.C3Button.FontColor = [1 0.8078 0.0118];
-            app.C3Button.Position = [11 81 78 22];
+            app.C3Button.Position = [11 81 142 22];
 
             % Create C2Button
             app.C2Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C2Button.Text = '2: Not very confident';
+            app.C2Button.Tooltip = {'Target contrast is poorly visible'};
+            app.C2Button.Text = '2: Poorly Visible';
             app.C2Button.FontWeight = 'bold';
             app.C2Button.FontColor = [0.9882 0.3804 0.0196];
             app.C2Button.Position = [11 101 142 22];
 
             % Create C1Button
             app.C1Button = uiradiobutton(app.ConfidenceButtonGroup);
-            app.C1Button.Text = '1: Not at all confident';
+            app.C1Button.Tooltip = {'Target structure is not visible'};
+            app.C1Button.Text = '1: Not Visible';
             app.C1Button.FontWeight = 'bold';
             app.C1Button.FontColor = [0.9412 0.0196 0.0196];
-            app.C1Button.Position = [11 121 144 22];
+            app.C1Button.Position = [11 121 98 22];
 
             % Create C0Button
             app.C0Button = uiradiobutton(app.ConfidenceButtonGroup);
