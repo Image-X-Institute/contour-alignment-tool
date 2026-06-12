@@ -205,7 +205,24 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
     
     methods (Access = private)
 
-        
+        % This method allows us to browse a folder without the Matlab app
+        % minimising. Unfortunately, it does create a dummy figure that
+        % appears in the task bar while the browse window is open.
+        function path = uigetdir_safe(app, varargin)
+            f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0], 'Name', 'Please ignore: Creating this figure stops the Matlab window from minimising on folder browse', 'NumberTitle', 'off');
+            cleanup = onCleanup(@() delete(f));
+            path = uigetdir(varargin{:});
+        end
+
+        % This method allows us to browse a file without the Matlab app
+        % minimising. Unfortunately, it does create a dummy figure that
+        % appears in the task bar while the browse window is open.
+        function [file, path] = uigetfile_safe(app, varargin)
+            f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0], 'Name', 'Please ignore', 'NumberTitle', 'off');
+            cleanup = onCleanup(@() delete(f));
+            [file, path] = uigetfile(varargin{:});
+        end
+
         % AUTHOR : Andy Shieh, School of Physics, The University of Sydney
         % DATE   : 2012-11-08  Created.
         % ------------------------------------------
@@ -233,14 +250,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 DefaultDir = pwd;
                 
                 % get the input file (hnc) & extract path & base name
-                f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-                [FileName,PathName] = uigetfile( ...
+                [FileName,PathName] = uigetfile_safe(app,  ...
                     {'*.mha;*.7z;*.zip;*.rar','MetaImage (*.mha) or Archive file (*.7z, *.zip, *.rar)';...
                     '*.*','All files (*.*)'},...
                     'Select an image or image archive file', ...
                     DefaultDir);
-                delete(f);
-
+                
                 % make same format as input
                 filename = fullfile(PathName, FileName);
                 
@@ -403,9 +418,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             info = struct();
 
             if(exist('filename','var')==0)
-                f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-                [filename, pathname] = uigetfile('*.mha', 'Read mha-file');
-                delete(f);
+                [filename, pathname] = uigetfile_safe(app, '*.mha', 'Read mha-file');
                 filename = [pathname filename];
             end
 
@@ -654,14 +667,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 DefaultDir = pwd;
                 
                 % get the input file (hnc) & extract path & base name
-                f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-                [FileName,PathName] = uigetfile( {'*.hnd;*.hnc;','Varian Image Files (*.hnd,*.hnc,*.mat,*.mdl)';
+                [FileName,PathName] = uigetfile_safe(app,  {'*.hnd;*.hnc;','Varian Image Files (*.hnd,*.hnc,*.mat,*.mdl)';
                     '*.hnc',  'Portal Images (*.hnc)'; ...
                     '*.hnd',  'OBI kv Images (*.hnd)'}, ...
                     'Select an image file', ...
                     DefaultDir);
-                delete(f);
-
+                
                 % make same format as input
                 filename = fullfile(PathName, FileName); 
             end
@@ -791,13 +802,11 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         function [info,M] = XimReader(~,filename)
             %% Input filename
             if nargin < 1
-                f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
                 filename = uigetfilepath( {'*.xim;*.XIM;','Varian XIM Files (*.xim,*.XIM)';
                     '*.xim',  'Varian XIM Files (*.xim)'; ...
                     '*.XIM',  'Varian XIM Files (*.XIM)'}, ...
                     'Select an image file', ...
                     pwd);
-                delete(f);
             end
             
             
@@ -1021,12 +1030,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 DefaultDir = pwd;
                 
                 % get the input file (hnc) & extract path & base name
-                f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-                [FileName,PathName] = uigetfile( {'*.his;','Elekta Image Files (*.his)'}, ...
+                [FileName,PathName] = uigetfile_safe(app,  {'*.his;','Elekta Image Files (*.his)'}, ...
                     'Select an image file', ...
                     DefaultDir);
-                delete(f);
-
+                
                 % make same format as input
                 filename = fullfile(PathName, FileName);
             end
@@ -1123,14 +1130,12 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 DefaultDir = pwd;
                 
                 % get the input file (hnc) & extract path & base name
-                f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-                [FileName,PathName] = uigetfile( {'*.hnd;*.hnc;','Varian Image Files (*.hnd,*.hnc,*.mat,*.mdl)';
+                [FileName,PathName] = uigetfile_safe(app,  {'*.hnd;*.hnc;','Varian Image Files (*.hnd,*.hnc,*.mat,*.mdl)';
                     '*.hnc',  'Portal Images (*.hnc)'; ...
                     '*.hnd',  'OBI kv Images (*.hnd)'}, ...
                     'Select an image file', ...
                     DefaultDir);
-                delete(f);
-
+                
                 % make same format as input
                 filename = fullfile(PathName, FileName); 
             end
@@ -1281,10 +1286,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                 app.paths.projections = '';
             end
             if browse
-                f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-                app.paths.projections = uigetdir(app.paths.projections, ...
+                app.paths.projections = uigetdir_safe(app, app.paths.projections, ...
                     'Select the folder containing the intrafraction CBCT images (.tiff, .xim, .hnc, .hnd, .dcm, or .his)');
-                delete(f);
                 if isequal(app.paths.projections, 0)
                     return;
                 else
@@ -1571,12 +1574,14 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Search the selected folder for the CT, RS and RP DICOMS
         function updateDICOMDir(app,browse)
             
-            % Reset the paths and dcm variables
-            app.paths.plan = char();
-            app.paths.structure = char();
+            % Reset the dcm variables
             app.dcmHeaders = {};
             
             if ~browse
+                % Reset the paths.
+                app.paths.plan = char();
+                app.paths.structure = char();
+
                 % Look for default folders.
                 folders = { dir(fullfile(app.paths.master, app.folders.plans, app.PatientDropDown.Value)).name};
                 for f = app.folders.default_ct_options
@@ -1627,6 +1632,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             
 
             % --- Collect all DICOM file info ---
+            planName = '';
+            structureName = '';
+
             if isfield(app.paths, "ct")
                 app.CTLabel.Tooltip = app.paths.ct;
                 ctFiles = dir(fullfile(app.paths.ct, '*.dcm'));
@@ -2325,9 +2333,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                         delete([app.paths.export,'/*.png'])
                     
                     case 'Choose new location'
-                        f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-                        app.paths.export = uigetdir(app.paths.persistent,'Select the export folder location');
-                        delete(f);
+                        app.paths.export = uigetdir_safe(app, app.paths.persistent,'Select the export folder location');
                         if ~isequal(app.paths.export,0)
                             app.paths.persistent = app.paths.export;
                             app.paths.export = fullfile(app.paths.export, 'Contours');
@@ -2734,9 +2740,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                   
                 % Export to a new location of the user's choice
                 case 'Export As...'
-                    f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-                    app.paths.export = uigetdir(app.paths.persistent,'Select the export folder location');
-                    delete(f);
+                    app.paths.export = uigetdir_safe(app, app.paths.persistent,'Select the export folder location');
                     if ~isequal(app.paths.export,0)
                         app.paths.persistent = app.paths.export;
         
@@ -2775,9 +2779,7 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Button pushed function: MasterBrowse
         function automatedSearch(app, event)
             % List the patient folders within the selected master folder
-            f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-            app.paths.master = uigetdir(app.paths.persistent,'Select the clinical trial folder');
-            delete(f);
+            app.paths.master = uigetdir_safe(app, app.paths.persistent,'Select the clinical trial folder');
             if ~isequal(app.paths.master,0)
                 app.paths.persistent = app.paths.master;
             else
@@ -2858,10 +2860,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Button pushed function: CTBrowse
         function CTBrowsePushed(app, event)
             % Check the selected folder for CT files
-            f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-            app.paths.ct = uigetdir(app.paths.persistent,'Select the folder containing the CT files');
-            delete(f); %delete the dummy figure
-
+            app.paths.ct = uigetdir_safe(app, app.paths.persistent,'Select the folder containing the CT files');
+            
             if ~isequal(app.paths.ct,0)
                 app.paths.persistent = app.paths.ct;
                 app.CTLabel.Tooltip = app.paths.ct;
@@ -2873,12 +2873,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Button pushed function: PlanBrowse
         function PlanBrowsePushed(app, event)
             % Check if the selected file is a plan dcm
-            
-            f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-            [file,path] = uigetfile('/*.dcm','Select the plan file',...
+            [file,path] = uigetfile_safe(app, '/*.dcm','Select the plan file',...
                 app.paths.persistent);
-            delete(f); %delete the dummy figure
-
+            
             if ~isequal(file,0)
                 app.paths.plan = [path file];
                 app.paths.persistent = path;  
@@ -2908,12 +2905,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Button pushed function: StructureBrowse
         function StructureBrowsePushed(app, event)
             % Check if the selected file is a structure dcm
-
-            f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-            [file,path] = uigetfile('/*.dcm','Select the structure set file',...
+            [file,path] = uigetfile_safe(app, '/*.dcm','Select the structure set file',...
                 app.paths.persistent);
-            delete(f); %delete the dummy figure
-
+            
             d = uiprogressdlg(app.ContourAlignmentToolUIFigure,'Title','Data Processing',...
                 'Message','Loading structure set contours',...
                 'Value',0);
@@ -3018,10 +3012,8 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
         % Button pushed function: ExportBrowse
         function ExportBrowsePushed(app, event)
             % Set the export folder
-            f = figure('Renderer', 'painters', 'Position', [-100 -100 0 0]); %create a dummy figure so that uigetfile doesn't minimize our GUI
-            app.paths.export = uigetdir(app.paths.persistent,'Select the export folder location');
-            delete(f);
-
+            app.paths.export = uigetdir_safe(app, app.paths.persistent,'Select the export folder location');
+            
             if ~isequal(app.paths.export,0)
                 app.paths.persistent = app.paths.export;
                 app.paths.export = fullfile(app.paths.export, 'Contours');
