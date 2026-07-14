@@ -1807,6 +1807,9 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     app.projection = app.projection(1:768,1:1024);
                     app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
                     app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
+                    % vertical flip (updated for Sheep)
+                    app.DRR = flip(app.DRR, 1);
+                    app.Mask = flip(app.Mask, 1);
                     
                 elseif strcmp(app.fileType,'.xim')
                     proj_path = fullfile(app.Projections(app.currentFrame).folder,app.Projections(app.currentFrame).name);
@@ -1818,7 +1821,10 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                     app.projection = imrotate(app.projection,-90);
                     app.DRR = permute(app.DRRs(:,:,app.currentFrame),[2 1 3]);
                     app.Mask = permute(app.Masks(:,:,app.currentFrame),[2 1 3]);
-                    
+                    % vertical flip (updated for Sheep)
+                    app.DRR = flip(app.DRR, 1);
+                    app.Mask = flip(app.Mask, 1);
+
                 elseif strcmp(app.fileType,'.hnc')
                     [~, app.projection] = HncReader(app,fullfile(app.Projections(app.currentFrame).folder,app.Projections(app.currentFrame).name));
                     app.projection = imrotate(app.projection,-90);
@@ -2585,6 +2591,22 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
             addpath(fullfile(appRoot, 'Supporting Apps'));
             addpath(fullfile(appRoot, 'Dependencies'));
 
+            % Initialise paths structure (updated)
+            if ~isstruct(app.paths)
+                app.paths = struct();
+            end
+            
+            app.paths.root = appRoot;
+            app.paths.persistent = appRoot;
+            app.paths.ct = char();
+            app.paths.plan = char();
+            app.paths.structure = char();
+            app.paths.projections = char();
+            app.paths.export = char();
+
+            % Initialise app mode
+            app.mode = "selection";
+
             % Get the app mode.
             modePath = fullfile(appRoot, 'mode.txt');
             disp(modePath);
@@ -3153,14 +3175,60 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                             % Final projection angle
                             projectionAngle = mVGantryAngle + 90 - offset;
                         end
-    
-                        % Change angles to be between 0 and 360
-                        while projectionAngle > 360
-                            projectionAngle = projectionAngle - 360;
+
+                        % =========================================================
+                        % test code for sheep cardiac data
+                        % DRR angle convention correction
+                        % Do NOT change the TIFF image reading.
+                        % Only change the angle used for DRR projection.
+                        %
+                        % Options to test:
+                        % "ORIGINAL"
+                        % "PLUS_180"
+                        % "NEGATIVE"
+                        % "NEGATIVE_PLUS_180"
+                        % "PLUS_90"
+                        % "MINUS_90"
+                        % "NEGATIVE_PLUS_90"
+                        % "NEGATIVE_MINUS_90"
+                        % =========================================================
+                        
+                        rawProjectionAngle = projectionAngle;
+                        
+                        angleConvention = "NEGATIVE_PLUS_180";  
+                        % For PAT34 feet-first, try this first because +180 alone did not align.
+                        
+                        switch angleConvention
+                            case "ORIGINAL"
+                                projectionAngle = rawProjectionAngle;
+                        
+                            case "PLUS_180"
+                                projectionAngle = rawProjectionAngle + 180;
+                        
+                            case "NEGATIVE"
+                                projectionAngle = -rawProjectionAngle;
+                        
+                            case "NEGATIVE_PLUS_180"
+                                projectionAngle = -rawProjectionAngle + 180;
+                        
+                            case "PLUS_90"
+                                projectionAngle = rawProjectionAngle + 90;
+                        
+                            case "MINUS_90"
+                                projectionAngle = rawProjectionAngle - 90;
+                        
+                            case "NEGATIVE_PLUS_90"
+                                projectionAngle = -rawProjectionAngle + 90;
+                        
+                            case "NEGATIVE_MINUS_90"
+                                projectionAngle = -rawProjectionAngle - 90;
                         end
-                        while projectionAngle < 0
-                            projectionAngle = projectionAngle + 360;
-                        end
+                        
+                        % Normalize to 0–360
+                        projectionAngle = mod(projectionAngle, 360);
+                        
+                        fprintf("File: %s | raw angle: %.2f | DRR angle: %.2f | convention: %s\n", ...
+                            app.Projections(i).name, rawProjectionAngle, projectionAngle, angleConvention);
                         
                         % Save the projection angle to a csv file
                         app.Projections(i).angle = projectionAngle;
@@ -3229,25 +3297,65 @@ classdef ContourAlignmentTool < matlab.apps.AppBase
                         zIdxForEachFile(k) = zIdx{1}(k);
                 end
                 
-                %% Read CT volumes and stack them up according to z location
+                %% （update for Sheep CT） Read CT volumes and stack them up according to z location
+                % Convert raw DICOM pixels to HU first:
+                % HU = raw * RescaleSlope + RescaleIntercept
                 for k = 1:length(app.dcmHeaders)
-                    imgStacks{1}(:,:,zIdxForEachFile(k)) = single(dicomread(app.dcmHeaders{k}.Filename));
+                    rawSlice = single(dicomread(app.dcmHeaders{k}.Filename));
+                
+                    if isfield(app.dcmHeaders{k}, 'RescaleSlope')
+                        slope = single(app.dcmHeaders{k}.RescaleSlope);
+                    else
+                        slope = single(1);
+                    end
+                
+                    if isfield(app.dcmHeaders{k}, 'RescaleIntercept')
+                        intercept = single(app.dcmHeaders{k}.RescaleIntercept);
+                    else
+                        intercept = single(0);
+                    end
+                
+                    huSlice = rawSlice * slope + intercept;
+                
+                    imgStacks{1}(:,:,zIdxForEachFile(k)) = huSlice;
                 end
                 
-                %% Convert to IEC geometry and scale intensity value
+                disp('CT HU before clipping:')
+                disp(['  min/max = ', num2str(min(imgStacks{1}(:))), ', ', num2str(max(imgStacks{1}(:)))])
+                disp('  percentiles = ')
+                disp(prctile(imgStacks{1}(:), [0.1 1 5 50 95 99 99.9]))
+                
+                %% Clip CT padding/background values
+                % Some CTs contain padding values such as -8192 HU.
+                % If these are converted directly, they become negative attenuation and can
+                % create blurred/banded DRRs.
+                imgStacks{1}(imgStacks{1} < -1000) = -1000;
+                
+                disp('CT HU after clipping HU < -1000 to -1000:')
+                disp(['  min/max = ', num2str(min(imgStacks{1}(:))), ', ', num2str(max(imgStacks{1}(:)))])
+                disp('  percentiles = ')
+                disp(prctile(imgStacks{1}(:), [0.1 1 5 50 95 99 99.9]))
+                
+                %% Convert to IEC geometry
                 imgStacks{1} = permute(imgStacks{1},[2 3 1]);
                 
                 if strcmp(app.fileType,'.his') || strcmp(app.fileType,'.hnd') || strcmp(app.fileType,'.tiff')
                     imgStacks{1} = imgStacks{1}(end:-1:1,:,:); 
                 end
                 
+                %% Convert HU to linear attenuation
+                % DCMtoMHA.m logic:
+                % mu = (HU + 1000) * waterAtt / 1000
                 if ~isnan(waterAtt)
-                    if min(imgStacks{1}(:)) >= 0
-                        imgStacks{1} = imgStacks{1} * waterAtt / 1000;
-                    else
-                        imgStacks{1} = (imgStacks{1} + 1000) * waterAtt / 1000;
-                    end
+                    imgStacks{1} = (imgStacks{1} + 1000) * waterAtt / 1000;
+                    imgStacks{1}(imgStacks{1} < 0) = 0;
                 end
+                
+                disp('CT linear attenuation after conversion:')
+                disp(['  min/max = ', num2str(min(imgStacks{1}(:))), ', ', num2str(max(imgStacks{1}(:)))])
+                disp('  percentiles = ')
+                disp(prctile(imgStacks{1}(:), [0.1 1 5 50 95 99 99.9]))
+                disp(['  negative voxels = ', num2str(sum(imgStacks{1}(:) < 0))])
                 
                 d.Value = 0.35; 
                 d.Message = 'Generating structure volume mask';
