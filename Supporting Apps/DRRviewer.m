@@ -104,7 +104,20 @@ classdef DRRviewer < matlab.apps.AppBase
             
                 
             % Display the DRR
-            imshow(app.I,[min([val1,val2])*max(app.I(:)) max([val1,val2])*max(app.I(:))],'Parent',app.UIAxes,'XData', [1 app.displaySize(1)],'YData', [1 app.displaySize(2)]);
+            displayLow = min([val1,val2])*max(app.I(:));
+            displayHigh = max([val1,val2])*max(app.I(:));
+            if app.CallingApp.HistEqMenu.Checked
+                % Apply the windowing explicitly first, then histogram
+                % equalisation, so equalisation only affects the displayed
+                % image - the histogram above still shows the
+                % pre-equalisation data, within the same [lower,upper] bins.
+                displayImage = (app.I - displayLow) / (displayHigh - displayLow);
+                displayImage = min(max(displayImage, 0), 1);
+                displayImage = histeq(displayImage);
+                imshow(displayImage,[0 1],'Parent',app.UIAxes,'XData', [1 app.displaySize(1)],'YData', [1 app.displaySize(2)]);
+            else
+                imshow(app.I,[displayLow displayHigh],'Parent',app.UIAxes,'XData', [1 app.displaySize(1)],'YData', [1 app.displaySize(2)]);
+            end
             app.UIAxes.XLim = [1 app.displaySize(1)];
             app.UIAxes.YLim = [1 app.displaySize(2)];
             
